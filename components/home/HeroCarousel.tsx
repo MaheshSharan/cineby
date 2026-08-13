@@ -102,7 +102,7 @@ function HeroSlide({ item, genreNames }: HeroSlideProps) {
         ) : null}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-[10%] right-[-10%] z-[1] h-[55%] w-1/2 bg-[radial-gradient(rgba(220,38,38,0.14)_0px,rgba(220,38,38,0.06)_30%,rgba(0,0,0,0)_60%)] blur-[40px]"
+          className="pointer-events-none absolute -top-[10%] -right-[10%] z-[1] h-[55%] w-1/2 bg-[radial-gradient(rgba(220,38,38,0.14)_0px,rgba(220,38,38,0.06)_30%,rgba(0,0,0,0)_60%)] blur-[40px]"
         />
         <div
           aria-hidden="true"
@@ -113,7 +113,7 @@ function HeroSlide({ item, genreNames }: HeroSlideProps) {
           className="pointer-events-none absolute inset-0 z-[2]"
           style={{
             background:
-              "linear-gradient(180deg,#05070a00 40%,#05070aeb 88%,var(--background) 100%),linear-gradient(90deg,#05070ac7 0,#05070a59 42%,#05070a00 65%),linear-gradient(180deg,#05070a99 0,#05070a00 35%)",
+              "linear-gradient(rgba(5, 7, 10, 0) 40%, rgba(5, 7, 10, 0.92) 88%, rgb(5, 7, 10) 100%), linear-gradient(90deg, rgba(5, 7, 10, 0.78) 0px, rgba(5, 7, 10, 0.35) 42%, rgba(5, 7, 10, 0) 65%), linear-gradient(rgba(5, 7, 10, 0.6) 0px, rgba(5, 7, 10, 0) 35%)",
           }}
         />
       </div>

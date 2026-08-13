@@ -15,3 +15,19 @@ export async function listHistory(): Promise<HistoryEntry[]> {
 
   return Array.isArray(data.items) ? data.items : [];
 }
+
+export async function removeFromHistory(id: number): Promise<boolean> {
+  const response = await fetch(`/api/history?id=${id}`, {
+    method: "DELETE",
+  });
+
+  return response.ok;
+}
+
+export async function clearAllHistory(): Promise<boolean> {
+  const response = await fetch("/api/history", {
+    method: "DELETE",
+  });
+
+  return response.ok;
+}

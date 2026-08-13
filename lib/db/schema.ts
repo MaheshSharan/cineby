@@ -39,6 +39,10 @@ export function initializeSchema(database: DatabaseSync): void {
       title TEXT NOT NULL,
       season_number INTEGER,
       episode_number INTEGER,
+      poster_path TEXT,
+      backdrop_path TEXT,
+      duration TEXT,
+      progress INTEGER,
       watched_at TEXT NOT NULL
     );
 
@@ -49,8 +53,8 @@ export function initializeSchema(database: DatabaseSync): void {
 
   // Safe migration for existing databases: add avatar_url column if not present
   try {
-    const columns = database.prepare("PRAGMA table_info(users)").all() as { name: string }[];
-    const hasAvatarUrl = columns.some((col) => col.name === "avatar_url");
+    const userColumns = database.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+    const hasAvatarUrl = userColumns.some((col) => col.name === "avatar_url");
     if (!hasAvatarUrl) {
       database.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT;");
     }
@@ -61,6 +65,20 @@ export function initializeSchema(database: DatabaseSync): void {
       SET created_at = datetime('now')
       WHERE created_at IS NULL OR created_at = '' OR created_at = 'undefined';
     `);
+
+    const historyColumns = database.prepare("PRAGMA table_info(watch_history)").all() as { name: string }[];
+    if (!historyColumns.some((col) => col.name === "poster_path")) {
+      database.exec("ALTER TABLE watch_history ADD COLUMN poster_path TEXT;");
+    }
+    if (!historyColumns.some((col) => col.name === "backdrop_path")) {
+      database.exec("ALTER TABLE watch_history ADD COLUMN backdrop_path TEXT;");
+    }
+    if (!historyColumns.some((col) => col.name === "duration")) {
+      database.exec("ALTER TABLE watch_history ADD COLUMN duration TEXT;");
+    }
+    if (!historyColumns.some((col) => col.name === "progress")) {
+      database.exec("ALTER TABLE watch_history ADD COLUMN progress INTEGER;");
+    }
   } catch {
     // Migration checks are best-effort during schema init
   }

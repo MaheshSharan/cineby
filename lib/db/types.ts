@@ -21,7 +21,11 @@ export interface HistoryEntry {
   mediaType: "movie" | "tv";
   mediaId: number;
   title: string;
+  posterPath: string | null;
+  backdropPath: string | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
+  duration: string | null;
+  progress: number | null;
   watchedAt: string;
 }

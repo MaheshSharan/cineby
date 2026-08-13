@@ -18,8 +18,10 @@ import { RecommendationsRow } from "@/components/detail/RecommendationsRow";
 import { PlayerShell } from "@/components/player/PlayerShell";
 import { PageLoader } from "@/components/ui/PageLoader";
 import {
+  CheckIcon,
   ChevronLeftIcon,
   ListOrderedIcon,
+  PlusIcon,
   SparklesIcon,
   StarIcon,
 } from "@/components/ui/icons";
@@ -43,7 +45,7 @@ const TRAILER_GRADIENT_LEFT_RIGHT =
 
 export function DetailPage({ details, isPlaying }: DetailPageProps) {
   const router = useRouter();
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, showToast } = useAuth();
   const [isMuted, setIsMuted] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
@@ -129,7 +131,9 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
           });
 
       if (success) {
-        setInWatchlist(!inWatchlist);
+        const nextState = !inWatchlist;
+        setInWatchlist(nextState);
+        showToast(nextState ? "Added to watchlist" : "Removed from watchlist");
       }
     } catch {
       // Watchlist toggle failed — keep current state; user can retry.
@@ -149,7 +153,12 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
         subtitle={
           details.releaseDate ? getYear(details.releaseDate) || undefined : undefined
         }
-        media={{ mediaType: details.mediaType, mediaId: details.id }}
+        media={{
+          mediaType: details.mediaType,
+          mediaId: details.id,
+          posterPath: details.posterPath,
+          backdropPath: details.backdropPath,
+        }}
         onBack={() => router.push(getMediaHref(details.mediaType, details.id))}
       />
     );
@@ -168,150 +177,170 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
         </Link>
       </div>
 
-      <div className="relative w-full overflow-hidden" style={{ height: "80vh" }}>
-        {heroBackdrop ? (
+      <div className="relative min-h-[60vh] w-full md:min-h-[75vh] lg:min-h-[85vh]">
+        <div className="absolute inset-0 overflow-hidden">
+          {heroBackdrop ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={heroBackdrop}
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-cover object-center"
+            />
+          ) : (
+            <div className="h-full w-full bg-surface-1" />
+          )}
           <div
-            className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${heroBackdrop})` }}
-          >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{ background: GRADIENT_LEFT_RIGHT }}
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{ background: GRADIENT_TOP_BOTTOM }}
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-10 -right-20 h-[45%] w-[55%]"
-              style={{
-                background:
-                  "radial-gradient(rgba(220, 38, 38, 0.16) 0%, rgba(220, 38, 38, 0.06) 30%, rgba(0, 0, 0, 0) 60%)",
-                filter: "blur(40px)",
-              }}
-            />
-          </div>
-        ) : null}
-
-        {trailer && showTrailer ? (
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{ background: GRADIENT_LEFT_RIGHT }}
+          />
           <div
-            className="absolute inset-0 w-full overflow-hidden transition-opacity duration-300 ease-in-out"
-            style={{ opacity: trailerReady ? 1 : 0 }}
-          >
-            <iframe
-              key={isMuted ? "muted" : "unmuted"}
-              src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=${
-                isMuted ? 1 : 0
-              }&controls=0&showinfo=0&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1&disablekb=1&fs=0&rel=0&origin=${
-                typeof window !== "undefined" ? window.location.origin : ""
-              }`}
-              title="Background Trailer"
-              className="h-full w-full"
-              style={{
-                transform: "scale(1.52)",
-                transformOrigin: "center center",
-                pointerEvents: "none",
-              }}
-              sandbox="allow-scripts allow-same-origin allow-presentation"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              onLoad={() => setTrailerReady(true)}
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{ background: TRAILER_GRADIENT_LEFT_RIGHT }}
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{ background: TRAILER_GRADIENT_TOP_BOTTOM }}
-            />
-          </div>
-        ) : null}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{ background: GRADIENT_TOP_BOTTOM }}
+          />
 
-        {trailer ? (
+          {trailer && showTrailer ? (
+            <div
+              className="absolute inset-0 w-full overflow-hidden transition-opacity duration-300 ease-in-out"
+              style={{ opacity: trailerReady ? 1 : 0 }}
+            >
+              <iframe
+                key={isMuted ? "muted" : "unmuted"}
+                src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=${
+                  isMuted ? 1 : 0
+                }&controls=0&showinfo=0&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1&disablekb=1&fs=0&rel=0&origin=${
+                  typeof window !== "undefined" ? window.location.origin : ""
+                }`}
+                title="Background Trailer"
+                className="h-full w-full"
+                style={{
+                  transform: "scale(1.52)",
+                  transformOrigin: "center center",
+                  pointerEvents: "none",
+                }}
+                sandbox="allow-scripts allow-same-origin allow-presentation"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                onLoad={() => setTrailerReady(true)}
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                style={{ background: TRAILER_GRADIENT_LEFT_RIGHT }}
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                style={{ background: TRAILER_GRADIENT_TOP_BOTTOM }}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        {trailer && showTrailer && trailerReady ? (
           <button
             type="button"
-            onClick={() => setIsMuted((muted) => !muted)}
-            aria-label={isMuted ? "Unmute" : "Mute"}
-            className="absolute right-6 top-6 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.08] text-text-hi backdrop-blur-xl transition-all duration-200 hover:scale-[1.04] hover:border-primary/40 hover:text-accent-hi md:right-8 md:top-8"
-            style={{
-              background:
-                "linear-gradient(rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.016) 100%)",
-              boxShadow:
-                "rgba(255,255,255,0.06) 0px 1px 0px inset, rgba(0,0,0,0.6) 0px 8px 18px -8px",
-            }}
+            onClick={() => setIsMuted((prev) => !prev)}
+            aria-label={isMuted ? "Unmute trailer" : "Mute trailer"}
+            className="absolute bottom-6 right-6 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-black/70 md:bottom-8 md:right-8"
           >
-            {isMuted ? <MutedIcon /> : <VolumeIcon />}
+            {isMuted ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+              </svg>
+            )}
           </button>
         ) : null}
 
-        <div className="relative z-10 flex h-full flex-col justify-end px-6 pb-10 md:px-12 lg:px-20 xl:px-24">
-          <div
-          className="w-full max-w-2xl text-left"
-          onMouseEnter={() => setShowOverview(true)}
-          onMouseLeave={() => setShowOverview(false)}
-        >
-            <div
-              className={`origin-left transition-all duration-500 ease-out ${
-                hasEntered ? "mb-5 scale-100" : "mb-2 scale-[0.8]"
-              }`}
-            >
-              {details.logoPath ? (
-                // eslint-disable-next-line @next/next/no-img-element
+        <div className="relative z-10 flex min-h-[60vh] flex-col justify-end px-8 pb-12 pt-28 md:min-h-[75vh] md:px-16 md:pb-16 lg:min-h-[85vh] lg:px-24">
+          <div className="max-w-2xl">
+            {details.logoPath ? (
+              <div className="mb-4 max-w-[280px] sm:max-w-[340px] md:max-w-[420px]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={getLogoUrl(details.logoPath) ?? undefined}
                   alt={details.title}
-                  className="h-auto max-h-[72px] max-w-[240px] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)] md:max-h-[96px] md:max-w-[340px]"
+                  className="max-h-24 w-auto object-contain object-left md:max-h-32"
                 />
-              ) : (
-                <h1 className="font-sans text-3xl font-black leading-[0.95] tracking-[-0.03em] text-text-hi md:text-5xl">
-                  {details.title}
-                </h1>
-              )}
-            </div>
+              </div>
+            ) : (
+              <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
+                {details.title}
+              </h1>
+            )}
 
             <div
-              className={`mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 overflow-hidden text-[13px] text-white/85 transition-all duration-500 ease-out ${
-                hasEntered ? "max-h-[64px] opacity-100" : "max-h-0 opacity-0"
+              className={`mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-text-hi transition-all duration-300 md:gap-3 md:text-sm ${
+                hasEntered ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
               }`}
-              style={{ textShadow: "rgba(0,0,0,0.65) 0px 1px 4px" }}
             >
               {details.voteAverage > 0 ? (
-                <span className="inline-flex items-center gap-1.5 text-accent-hi">
-                  <StarIcon size={13} className="fill-primary text-primary" />
-                  <span className="tabular-nums font-medium">
-                    {details.voteAverage.toFixed(0)}
-                  </span>
-                </span>
+                <DetailMetaItem
+                  value={details.voteAverage.toFixed(1)}
+                  isNumeric
+                />
               ) : null}
               {details.releaseDate ? (
-                <DetailMetaItem value={getYear(details.releaseDate)} />
+                <DetailMetaItem
+                  value={getYear(details.releaseDate)}
+                  isNumeric
+                />
               ) : null}
-              {"runtime" in details && details.runtime ? (
-                <DetailMetaItem value={formatRuntime(details.runtime)} isNumeric />
+              {"certification" in details && details.certification ? (
+                <DetailMetaItem value={details.certification} />
+              ) : null}
+              {"runtime" in details && formatRuntime(details.runtime) ? (
+                <DetailMetaItem value={formatRuntime(details.runtime) ?? ""} />
               ) : null}
               {details.genres.map((genre) => (
                 <DetailMetaItem key={genre.id} value={genre.name} />
               ))}
             </div>
 
-            {details.overview ? (
+            <div
+              className="relative my-4"
+              onMouseEnter={() => setShowOverview(true)}
+              onMouseLeave={() => setShowOverview(false)}
+            >
               <p
-                className={`max-w-xl overflow-hidden text-[14px] leading-relaxed text-white/85 transition-all duration-500 ease-out md:text-[15px] ${
-                  showOverview
-                    ? "mb-7 max-h-[140px] opacity-100 line-clamp-3"
-                    : "mb-0 max-h-0 opacity-0"
+                className={`text-xs leading-relaxed text-text-mid transition-all duration-300 md:text-sm ${
+                  showOverview ? "line-clamp-none" : "line-clamp-3"
                 }`}
-                style={{ textShadow: "rgba(0,0,0,0.65) 0px 1px 4px" }}
               >
                 {details.overview}
               </p>
-            ) : null}
+            </div>
 
             <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
               <Link
@@ -331,22 +360,16 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
               <button
                 type="button"
                 aria-label={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+                aria-pressed={inWatchlist}
                 onClick={handleWatchlist}
                 disabled={isWatchlistLoading}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 shadow-lg transition-all duration-200 hover:scale-105 hover:bg-white/20 focus:outline-none disabled:opacity-60 md:h-12 md:w-12"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white shadow-lg transition-all duration-200 hover:scale-105 hover:bg-white/20 active:scale-95 focus:outline-none disabled:opacity-60 md:h-12 md:w-12"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-[18px] w-[18px]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  aria-hidden="true"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                {inWatchlist ? (
+                  <CheckIcon size={20} className="stroke-[2.5]" />
+                ) : (
+                  <PlusIcon size={20} className="stroke-[2]" />
+                )}
               </button>
 
               {isTv ? (

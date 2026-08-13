@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
-import { addToWatchlist, listWatchlist } from "@/lib/db/watchlist";
+import { addToWatchlist, clearWatchlist, listWatchlist } from "@/lib/db/watchlist";
 import { logError } from "@/lib/logger";
 
 interface WatchlistBody {
@@ -22,6 +22,17 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (req.method === "GET") {
     res.status(200).json({ items: listWatchlist(user.id) });
+    return;
+  }
+
+  if (req.method === "DELETE") {
+    try {
+      clearWatchlist(user.id);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      logError("api/watchlist", error);
+      res.status(500).json({ error: "Unable to clear watchlist." });
+    }
     return;
   }
 
@@ -52,6 +63,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  res.setHeader("Allow", "GET, POST");
+  res.setHeader("Allow", "GET, POST, DELETE");
   res.status(405).json({ error: "Method not allowed" });
 }

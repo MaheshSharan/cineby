@@ -66,3 +66,11 @@ export async function removeFromWatchlist(
 
   return response.ok;
 }
+
+export async function clearAllWatchlist(): Promise<boolean> {
+  const response = await fetch("/api/watchlist", {
+    method: "DELETE",
+  });
+
+  return response.ok;
+}

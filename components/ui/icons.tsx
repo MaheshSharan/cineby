@@ -293,3 +293,40 @@ export function ChevronLeftIcon({ className, size = 20 }: IconProps) {
     </Icon>
   );
 }
+
+export function CheckIcon({ className, size = 18 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <polyline points="20 6 9 17 4 12" />
+    </Icon>
+  );
+}
+
+export function PlusIcon({ className, size = 18 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </Icon>
+  );
+}
+
+export function TrashIcon({ className, size = 16 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </Icon>
+  );
+}
+
+export function BookmarkIcon({ className, size = 16 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+    </Icon>
+  );
+}

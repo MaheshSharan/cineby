@@ -3,8 +3,11 @@ import { useEffect } from "react";
 export interface PlayerMedia {
   mediaType: "movie" | "tv";
   mediaId: number;
+  posterPath?: string | null;
+  backdropPath?: string | null;
   seasonNumber?: number | null;
   episodeNumber?: number | null;
+  duration?: string | null;
 }
 
 interface PlayerShellProps {
@@ -29,8 +32,11 @@ export function PlayerShell({ title, subtitle, media, onBack }: PlayerShellProps
         mediaType: media.mediaType,
         mediaId: media.mediaId,
         title,
+        posterPath: media.posterPath ?? null,
+        backdropPath: media.backdropPath ?? null,
         seasonNumber: media.seasonNumber ?? null,
         episodeNumber: media.episodeNumber ?? null,
+        duration: media.duration ?? null,
       }),
     }).catch(() => {});
   }, [media, title]);

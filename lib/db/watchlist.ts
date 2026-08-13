@@ -44,6 +44,10 @@ export function removeFromWatchlist(userId: number, mediaType: string, mediaId: 
     .run(userId, mediaType, mediaId);
 }
 
+export function clearWatchlist(userId: number): void {
+  getDb().prepare("DELETE FROM watchlist WHERE user_id = ?").run(userId);
+}
+
 export function isInWatchlist(userId: number, mediaType: string, mediaId: number): boolean {
   const row = getDb()
     .prepare("SELECT 1 AS present FROM watchlist WHERE user_id = ? AND media_type = ? AND media_id = ?")

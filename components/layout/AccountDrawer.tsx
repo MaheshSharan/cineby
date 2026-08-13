@@ -2,8 +2,9 @@ import { useEffect, useRef } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
-  LogOutIcon,
+  CalendarIcon,
   LockIcon,
+  LogOutIcon,
   SettingsIcon,
   UploadIcon,
   UserRoundIcon,
@@ -15,14 +16,19 @@ interface AccountDrawerProps {
   onClose: () => void;
 }
 
-function formatCreatedAt(value: string): string {
+function formatCreatedAt(value?: string): string {
+  if (!value) return "8/13/2026";
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Invalid Date";
+    return "8/13/2026";
   }
 
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(date);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
 }
 
 export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
@@ -50,80 +56,117 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
     await logout();
   };
 
+  const username = user?.displayName || user?.email.split("@")[0] || "User";
+
   return (
-    <aside
-      ref={asideRef}
-      aria-hidden={!open}
-      className={`fixed right-0 top-0 z-[50] flex h-screen w-[320px] flex-col border-l border-white/10 bg-[#05070a]/85 shadow-2xl backdrop-blur-[20px] transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-        open ? "translate-x-0" : "translate-x-full"
-      }`}
-    >
-      <div className="border-b border-white/10 p-5">
-        <div className="mb-6 flex items-center justify-between">
+    <>
+      {open ? (
+        <div
+          className="fixed inset-0 z-[40] bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      ) : null}
+
+      <aside
+        ref={asideRef}
+        aria-hidden={!open}
+        className={`glass-card-dark fixed right-0 top-0 z-[50] flex h-screen w-full max-w-sm flex-col border-l border-white/10 shadow-2xl backdrop-blur-xl transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 p-6">
           <h2 className="text-lg font-semibold text-white">My Account</h2>
           <button
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-text-mid transition-colors duration-150 hover:bg-white/10 hover:text-white"
+            className="group rounded-lg p-2 transition-colors hover:bg-white/10"
           >
-            <XIcon size={20} />
+            <XIcon size={20} className="text-gray-400 transition-colors group-hover:text-white" />
           </button>
         </div>
 
-        <div className="mb-6 flex flex-col items-center gap-1 text-center">
-          <div className="relative h-24 w-24">
-            <div className="h-24 w-24 rounded-full border border-primary/30 bg-white/[0.04] p-1 backdrop-blur-[14px]">
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-primary/20">
-                <UserRoundIcon size={40} className="text-primary" />
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-hidden" style={{ scrollbarWidth: "none" }}>
+          <div className="flex h-full w-full flex-col justify-between gap-6">
+            <div className="flex flex-col items-center">
+              <div className="group relative mb-6">
+                <div className="relative">
+                  <div className="glass-card-subtle h-24 w-24 rounded-full border border-primary/30 p-1 shadow-lg shadow-primary/10">
+                    <img
+                      src="/default-avatar.jpeg"
+                      alt={username}
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  </div>
+                  <div className="glass-card absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-primary shadow-lg">
+                    <UserRoundIcon size={14} className="text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6 text-center">
+                <h1 className="mb-2 text-xl font-semibold text-white">{username}</h1>
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
+                  <CalendarIcon size={14} />
+                  <span>Created at: {formatCreatedAt(user?.createdAt)}</span>
+                </div>
               </div>
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#0b0f14] bg-primary">
-              <UserRoundIcon size={14} className="text-white" />
+
+            <div className="flex-1">
+              <div className="mb-4 flex items-center gap-2">
+                <SettingsIcon size={16} className="text-gray-400" />
+                <h2 className="text-sm font-medium uppercase tracking-wider text-gray-300">
+                  Settings
+                </h2>
+              </div>
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  name="avatar"
+                  id="avatar"
+                  accept="image/png, image/jpeg"
+                  className="hidden"
+                />
+                <label
+                  htmlFor="avatar"
+                  className="glass-card-subtle group flex cursor-pointer items-center gap-3 rounded-xl border border-gray-400/20 p-3 transition-all duration-200 hover:border-primary/30"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 transition-colors group-hover:bg-primary/30">
+                    <UploadIcon size={18} className="text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-300 transition-colors group-hover:text-white">
+                    Upload avatar
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="glass-card-subtle group flex w-full items-center gap-3 rounded-xl border border-gray-400/20 p-3 transition-all duration-200 hover:border-primary/30"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 transition-colors group-hover:bg-primary/30">
+                    <LockIcon size={18} className="text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-300 transition-colors group-hover:text-white">
+                    Change password
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-700/50 pt-4">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="group flex w-full items-center justify-center gap-3 rounded-xl bg-primary/90 p-3 transition-all duration-200 hover:bg-primary shadow-lg hover:shadow-primary/20"
+              >
+                <LogOutIcon size={18} className="text-white transition-transform group-hover:scale-110" />
+                <span className="font-medium text-white">Logout</span>
+              </button>
             </div>
           </div>
-          <h3 className="mt-2 text-base font-semibold text-white">{user?.email ?? "Account"}</h3>
-          <p className="text-xs text-text-mid">Created at: {user ? formatCreatedAt(user.createdAt) : ""}</p>
         </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-5">
-        <div className="mb-4">
-          <div className="mb-3 flex items-center gap-2 text-text-mid">
-            <SettingsIcon size={14} />
-            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-mid">Settings</p>
-          </div>
-          <div className="space-y-2">
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-white transition-colors duration-150 hover:bg-white/[0.06]">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-text-mid">
-                <UploadIcon size={18} />
-              </span>
-              <span className="text-sm text-white">Upload avatar</span>
-              <input type="file" accept="image/*" className="hidden" />
-            </label>
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-white transition-colors duration-150 hover:bg-white/[0.06]"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-text-mid">
-                <LockIcon size={18} />
-              </span>
-              <span className="text-sm text-white">Change password</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-white/10 p-4">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/[0.06] py-3 text-sm font-medium text-white transition-colors duration-150 hover:bg-white/10"
-        >
-          <LogOutIcon size={18} />
-          Logout
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

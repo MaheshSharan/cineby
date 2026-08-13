@@ -98,9 +98,17 @@ export function Header() {
                 type="button"
                 aria-label={user ? "Open account" : "Login"}
                 onClick={handleUserClick}
-                className="ml-1 flex h-10 w-10 items-center justify-center rounded-full text-text-hi transition-colors duration-150 hover:bg-white/10 hover:text-primary"
+                className="ml-1 flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-text-hi transition-colors duration-150 hover:bg-white/10 hover:text-primary"
               >
-                <UserRoundIcon size={22} />
+                {user ? (
+                  <img
+                    src="/default-avatar.jpeg"
+                    alt={user.displayName || user.email}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <UserRoundIcon size={22} />
+                )}
               </button>
             </nav>
           </div>

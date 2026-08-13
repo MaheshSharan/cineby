@@ -14,7 +14,7 @@ interface AuthModalProps {
 
 export function AuthModal({ open, mode: initialMode = "login", onClose }: AuthModalProps) {
   const router = useRouter();
-  const { refresh } = useAuth();
+  const { refresh, showToast } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [username, setUsername] = useState("");
@@ -86,6 +86,11 @@ export function AuthModal({ open, mode: initialMode = "login", onClose }: AuthMo
       }
 
       await refresh();
+      if (mode === "login") {
+        showToast(`${username}, Welcome back!`);
+      } else {
+        showToast("Registered Successfully");
+      }
       handleClose();
     } catch {
       setError("Something went wrong. Please try again.");

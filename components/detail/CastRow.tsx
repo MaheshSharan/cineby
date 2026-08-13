@@ -11,36 +11,50 @@ export function CastRow({ cast }: CastRowProps) {
   }
 
   return (
-    <section className="py-6">
-      <h2 className="mb-4 px-4 text-[24px] font-semibold uppercase leading-none tracking-[0.05em] sm:px-6">
-        Actors
-      </h2>
+    <div>
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h2 className="heading-trail min-w-0 truncate text-xl font-semibold text-text-hi md:text-2xl">
+          Actors
+        </h2>
+      </div>
 
-      <div className="no-scrollbar flex gap-5 overflow-x-auto px-4 pb-2 sm:px-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cast.map((member) => (
-          <div key={member.id} className="w-28 shrink-0 text-center">
-            <div className="mx-auto h-24 w-24 overflow-hidden rounded-full bg-secondary">
+          <div
+            key={member.id}
+            className="group flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3 transition-all duration-200 hover:border-primary/40 hover:bg-white/[0.05]"
+          >
+            <div className="relative flex-shrink-0">
               {member.profilePath ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={getProfileUrl(member.profilePath) ?? undefined}
                   alt={member.name}
+                  title={member.name}
                   loading="lazy"
-                  className="h-full w-full object-cover"
+                  decoding="async"
+                  className="h-14 w-14 rounded-full object-cover ring-1 ring-white/[0.08] transition-all duration-200 group-hover:ring-primary/40"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xl font-bold text-muted-foreground">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-lg font-bold text-text-hi ring-1 ring-white/[0.08]">
                   {member.name.charAt(0)}
                 </div>
               )}
             </div>
-            <p className="mt-2 truncate text-[13px] font-medium">{member.name}</p>
-            {member.character ? (
-              <p className="truncate text-[11px] text-muted-foreground">{member.character}</p>
-            ) : null}
+
+            <div className="flex min-w-0 flex-col">
+              <p className="line-clamp-1 text-sm font-medium leading-tight text-text-hi transition-colors duration-200 group-hover:text-primary">
+                {member.name}
+              </p>
+              {member.character ? (
+                <p className="mt-0.5 line-clamp-1 text-xs leading-snug text-text-mid">
+                  {member.character}
+                </p>
+              ) : null}
+            </div>
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }

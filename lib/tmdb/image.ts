@@ -2,7 +2,16 @@ import { getTmdbImageBaseUrl } from "@/lib/env";
 
 export function buildImageUrl(
   path: string | null | undefined,
-  size: "w92" | "w154" | "w185" | "w342" | "w500" | "w780" | "w1280" | "original"
+  size:
+    | "w92"
+    | "w154"
+    | "w185"
+    | "w300"
+    | "w342"
+    | "w500"
+    | "w780"
+    | "w1280"
+    | "original"
 ): string | null {
   if (!path) {
     return null;
@@ -13,26 +22,26 @@ export function buildImageUrl(
   return `${imageBaseUrl}/${size}${path}`;
 }
 
-export function getPosterUrl(
-  path: string | null | undefined,
-  size: "w185" | "w342" | "w500" | "w780" | "original" = "w342"
-): string | null {
-  return buildImageUrl(path, size);
+export function getLogoUrl(path: string | null | undefined): string | null {
+  const tmdbUrl = buildImageUrl(path, "w500");
+
+  return tmdbUrl ? buildWsrvUrl(tmdbUrl, 50) : null;
 }
 
-export function getBackdropUrl(
-  path: string | null | undefined,
-  size: "w780" | "w1280" | "original" = "w1280"
-): string | null {
-  return buildImageUrl(path, size);
+export function getHeroBackdropUrl(path: string | null | undefined): string | null {
+  const tmdbUrl = buildImageUrl(path, "original");
+
+  return tmdbUrl ? buildWsrvUrl(tmdbUrl, 80) : null;
 }
 
 export function getProfileUrl(path: string | null | undefined): string | null {
   return buildImageUrl(path, "w185");
 }
 
-export function getStillUrl(path: string | null | undefined): string | null {
-  return buildImageUrl(path, "w500");
+export function getStillThumbUrl(path: string | null | undefined): string | null {
+  const tmdbUrl = buildImageUrl(path, "w300");
+
+  return tmdbUrl ? buildWsrvUrl(tmdbUrl, 50) : null;
 }
 
 function buildWsrvUrl(tmdbUrl: string, quality: number): string {

@@ -9,7 +9,7 @@ import {
 } from "./validate";
 
 const MOVIE_DETAILS_APPEND =
-  "credits,external_ids,videos,recommendations,translations,similar,release_dates";
+  "credits,external_ids,videos,recommendations,translations,similar,release_dates,images";
 
 export async function getMovieDetails(id: string | number): Promise<MovieDetails> {
   const { defaultLanguage } = getTmdbConfig();

@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.3.7",
     "bcryptjs": "^3.0.3",
     "next": "^15",
     "react": "^19",

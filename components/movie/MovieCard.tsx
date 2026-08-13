@@ -2,11 +2,11 @@ import Link from "next/link";
 
 import type { MediaSummary } from "@/lib/tmdb";
 import { getBackdropResponsiveUrls, getPosterResponsiveUrls } from "@/lib/tmdb/image";
-import { getMediaHref, getYear } from "@/lib/utils/media";
+import { getMediaHref, getMediaTypeLabel, getYear } from "@/lib/utils/media";
 
 import { StarIcon } from "@/components/ui/icons";
 
-export type CardVariant = "poster" | "backdrop" | "grid";
+type CardVariant = "poster" | "backdrop" | "grid";
 
 const VARIANT_WIDTH: Record<CardVariant, string> = {
   poster: "w-[140px] xs:w-[150px] md:w-[180px] lg:w-[200px] flex-shrink-0",
@@ -21,16 +21,12 @@ interface MovieCardProps {
   className?: string;
 }
 
-function getTypeLabel(mediaType: MediaSummary["mediaType"]): string {
-  return mediaType === "tv" ? "TV Show" : "Movie";
-}
-
 export function MovieCard({ media, variant = "poster", rank, className = "" }: MovieCardProps) {
   const poster = getPosterResponsiveUrls(media.posterPath);
   const backdrop = getBackdropResponsiveUrls(media.backdropPath || media.posterPath);
   const href = getMediaHref(media.mediaType, media.id);
   const year = getYear(media.releaseDate);
-  const typeLabel = getTypeLabel(media.mediaType);
+  const typeLabel = getMediaTypeLabel(media.mediaType);
   const widthClass = VARIANT_WIDTH[variant];
 
   const isBackdrop = variant === "backdrop";

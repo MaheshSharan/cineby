@@ -1,22 +1,28 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { MovieDetails, TvDetails } from "@/lib/tmdb";
-import { getBackdropUrl, getPosterUrl } from "@/lib/tmdb/image";
+import { getHeroBackdropUrl, getLogoUrl } from "@/lib/tmdb/image";
 import {
-  formatRuntime,
-  getMediaHref,
-  getPlayHref,
-  getYear,
-} from "@/lib/utils/media";
+  addToWatchlist,
+  checkWatchlist,
+  removeFromWatchlist,
+} from "@/lib/api/watchlist";
+import { formatRuntime, getMediaHref, getPlayHref, getYear } from "@/lib/utils/media";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { CastRow } from "@/components/detail/CastRow";
 import { EpisodesSection } from "@/components/detail/EpisodesSection";
 import { RecommendationsRow } from "@/components/detail/RecommendationsRow";
 import { PlayerShell } from "@/components/player/PlayerShell";
-import { RatingBadge } from "@/components/ui/RatingBadge";
+import { PageLoader } from "@/components/ui/PageLoader";
+import {
+  ChevronLeftIcon,
+  ListOrderedIcon,
+  SparklesIcon,
+  StarIcon,
+} from "@/components/ui/icons";
 
 type DetailData = MovieDetails | TvDetails;
 
@@ -25,23 +31,57 @@ interface DetailPageProps {
   isPlaying: boolean;
 }
 
+const TRAILER_DELAY_MS = 5000;
+const GRADIENT_TOP_BOTTOM =
+  "linear-gradient(180deg, rgba(5, 7, 10, 0.55) 0%, rgba(5, 7, 10, 0) 25%, rgba(5, 7, 10, 0) 65%, rgb(5, 7, 10) 100%)";
+const TRAILER_GRADIENT_TOP_BOTTOM =
+  "linear-gradient(180deg, rgba(5, 7, 10, 0.4) 0%, rgba(5, 7, 10, 0) 25%, rgba(5, 7, 10, 0) 60%, rgb(5, 7, 10) 100%)";
+const GRADIENT_LEFT_RIGHT =
+  "linear-gradient(90deg, rgba(5, 7, 10, 0.82) 0%, rgba(5, 7, 10, 0.45) 45%, rgba(5, 7, 10, 0) 70%)";
+const TRAILER_GRADIENT_LEFT_RIGHT =
+  "linear-gradient(90deg, rgba(5, 7, 10, 0.78) 0%, rgba(5, 7, 10, 0.35) 50%, rgba(5, 7, 10, 0) 75%)";
+
 export function DetailPage({ details, isPlaying }: DetailPageProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [isMuted, setIsMuted] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
-  const [showSimilar, setShowSimilar] = useState(false);
-  const similarRef = useRef<HTMLDivElement>(null);
+  const [hasEntered, setHasEntered] = useState(false);
+  const [showOverview, setShowOverview] = useState(false);
+  const [showTrailer, setShowTrailer] = useState(false);
+  const [trailerReady, setTrailerReady] = useState(false);
+  const [isPageReady, setIsPageReady] = useState(false);
 
-  const mediaType = details.mediaType;
   const trailer = findTrailer(details.videos);
-  const backdropUrl = getBackdropUrl(details.backdropPath, "original");
-  const posterUrl = getPosterUrl(details.posterPath, "w500");
-  const year = getYear(details.releaseDate);
-  const runtime =
-    "runtime" in details ? details.runtime : details.episodeRunTime[0] ?? null;
-  const runtimeLabel = formatRuntime(runtime);
+  const heroBackdrop = getHeroBackdropUrl(details.backdropPath);
+  const isTv = details.mediaType === "tv";
+
+  useEffect(() => {
+    if (isTv) {
+      return;
+    }
+
+    const id = window.requestAnimationFrame(() => setIsPageReady(true));
+
+    return () => window.cancelAnimationFrame(id);
+  }, [isTv]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setHasEntered(true), 150);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!trailer) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setShowTrailer(true), TRAILER_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [trailer]);
 
   useEffect(() => {
     if (!user) {
@@ -49,267 +89,334 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
       return;
     }
 
-    let isMounted = true;
+    let isCurrent = true;
 
-    fetch(`/api/watchlist/${mediaType}/${details.id}`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { inWatchlist?: boolean } | null) => {
-        if (isMounted && data && typeof data.inWatchlist === "boolean") {
-          setInWatchlist(data.inWatchlist);
+    checkWatchlist(details.mediaType, details.id)
+      .then((result) => {
+        if (isCurrent) {
+          setInWatchlist(result);
         }
       })
       .catch(() => {
-        if (isMounted) {
+        // Watchlist status is best-effort; default to "not in watchlist" on failure.
+        if (isCurrent) {
           setInWatchlist(false);
         }
       });
 
     return () => {
-      isMounted = false;
+      isCurrent = false;
     };
-  }, [user, mediaType, details.id]);
+  }, [details.id, details.mediaType, user]);
 
-  const toggleWatchlist = async () => {
+  const handleWatchlist = async () => {
     if (!user) {
-      router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
+      await router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
       return;
     }
 
     setIsWatchlistLoading(true);
 
     try {
-      if (inWatchlist) {
-        const response = await fetch(`/api/watchlist/${mediaType}/${details.id}`, {
-          method: "DELETE",
-        });
-
-        if (response.ok) {
-          setInWatchlist(false);
-        }
-      } else {
-        const response = await fetch("/api/watchlist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mediaType,
+      const success = inWatchlist
+        ? await removeFromWatchlist(details.mediaType, details.id)
+        : await addToWatchlist({
+            mediaType: details.mediaType,
             mediaId: details.id,
             title: details.title,
             posterPath: details.posterPath,
             backdropPath: details.backdropPath,
-          }),
-        });
+          });
 
-        if (response.ok) {
-          setInWatchlist(true);
-        }
+      if (success) {
+        setInWatchlist(!inWatchlist);
       }
+    } catch {
+      // Watchlist toggle failed — keep current state; user can retry.
     } finally {
       setIsWatchlistLoading(false);
     }
   };
 
-  const closePlayer = () => {
-    router.push(getMediaHref(mediaType, details.id));
-  };
+  const handleEpisodeReady = useCallback(() => {
+    setIsPageReady(true);
+  }, []);
 
   if (isPlaying) {
     return (
       <PlayerShell
         title={details.title}
-        subtitle={year || undefined}
-        media={{ mediaType, mediaId: details.id }}
-        onBack={closePlayer}
+        subtitle={
+          details.releaseDate ? getYear(details.releaseDate) || undefined : undefined
+        }
+        media={{ mediaType: details.mediaType, mediaId: details.id }}
+        onBack={() => router.push(getMediaHref(details.mediaType, details.id))}
       />
     );
   }
 
-  const scrollToSimilar = () => {
-    similarRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
-    <div>
-      <div className="relative w-full overflow-hidden bg-background">
-        <div className="relative aspect-video w-full sm:h-[520px]">
-          {trailer ? (
-            // eslint-disable-next-line react/iframe-missing-sandbox
-            <iframe
-              key={isMuted ? "muted" : "unmuted"}
-              src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&showinfo=0&iv_load_policy=3&modestbranding=1&playsinline=1&disablekb=1&fs=0&rel=0`}
-              title={`${details.title} trailer`}
-              className="h-full w-full"
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-            />
-          ) : backdropUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={backdropUrl} alt="" className="h-full w-full object-cover" />
-          ) : null}
-
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(rgba(5,7,10,0) 40%, rgba(5,7,10,0.92) 88%, rgb(5,7,10) 100%), linear-gradient(90deg, rgba(5,7,10,0.78) 0, rgba(5,7,10,0.35) 42%, rgba(5,7,10,0) 65%)",
-            }}
-          />
-
-          {trailer ? (
-            <button
-              type="button"
-              onClick={() => setIsMuted((muted) => !muted)}
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition-colors duration-150 hover:bg-primary"
-              aria-label={isMuted ? "Unmute" : "Mute"}
-            >
-              {isMuted ? <MutedIcon className="h-4 w-4" /> : <VolumeIcon className="h-4 w-4" />}
-            </button>
-          ) : null}
-        </div>
+    <div className="relative w-full bg-neo-bg text-white">
+      {!isPageReady ? <PageLoader /> : null}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-50 px-6 py-5 md:px-8 md:py-6">
+        <Link
+          href="/"
+          aria-label="Go back"
+          className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.07] text-text-hi backdrop-blur-xl transition-all duration-200 hover:border-primary/40 hover:text-accent-hi hover:scale-[1.04]"
+        >
+          <ChevronLeftIcon className="h-5 w-5" />
+        </Link>
       </div>
 
-      <div className="mx-auto max-w-screen-2xl">
-        <div className="flex flex-col gap-6 px-4 pt-4 sm:flex-row sm:items-start sm:px-6 sm:pt-8">
-          <div className="shrink-0">
-            <div className="w-40 overflow-hidden rounded-[10px] bg-secondary sm:w-56">
-              <div className="aspect-[2/3]">
-                {posterUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={posterUrl} alt={details.title} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center p-3 text-center text-xs font-medium text-muted-foreground">
-                    {details.title}
-                  </div>
-                )}
-              </div>
-            </div>
+      <div className="relative w-full overflow-hidden" style={{ height: "80vh" }}>
+        {heroBackdrop ? (
+          <div
+            className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${heroBackdrop})` }}
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{ background: GRADIENT_LEFT_RIGHT }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{ background: GRADIENT_TOP_BOTTOM }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-10 -right-20 h-[45%] w-[55%]"
+              style={{
+                background:
+                  "radial-gradient(rgba(220, 38, 38, 0.16) 0%, rgba(220, 38, 38, 0.06) 30%, rgba(0, 0, 0, 0) 60%)",
+                filter: "blur(40px)",
+              }}
+            />
           </div>
+        ) : null}
 
-          <div className="min-w-0 flex-1">
-            <h1 className="text-[32px] font-black uppercase leading-tight tracking-[0.05em] sm:text-[40px]">
-              {details.title}
-            </h1>
+        {trailer && showTrailer ? (
+          <div
+            className="absolute inset-0 w-full overflow-hidden transition-opacity duration-300 ease-in-out"
+            style={{ opacity: trailerReady ? 1 : 0 }}
+          >
+            {/* eslint-disable-next-line react/iframe-missing-sandbox */}
+            <iframe
+              key={isMuted ? "muted" : "unmuted"}
+              src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=${
+                isMuted ? 1 : 0
+              }&controls=0&showinfo=0&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1&disablekb=1&fs=0&rel=0&origin=${
+                typeof window !== "undefined" ? window.location.origin : ""
+              }`}
+              title="Background Trailer"
+              className="h-full w-full"
+              style={{
+                transform: "scale(1.52)",
+                transformOrigin: "center center",
+                pointerEvents: "none",
+              }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              onLoad={() => setTrailerReady(true)}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{ background: TRAILER_GRADIENT_LEFT_RIGHT }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{ background: TRAILER_GRADIENT_TOP_BOTTOM }}
+            />
+          </div>
+        ) : null}
 
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-foreground/80">
-              {details.voteAverage > 0 && <RatingBadge score={details.voteAverage} />}
-              {year && <span>{year}</span>}
-              {runtimeLabel && <span>{runtimeLabel}</span>}
-              {details.certification && (
-                <span className="rounded border border-border px-1.5 py-0.5 text-[11px] font-medium">
-                  {details.certification}
-                </span>
+        {trailer ? (
+          <button
+            type="button"
+            onClick={() => setIsMuted((muted) => !muted)}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+            className="absolute right-6 top-6 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.08] text-text-hi backdrop-blur-xl transition-all duration-200 hover:scale-[1.04] hover:border-primary/40 hover:text-accent-hi md:right-8 md:top-8"
+            style={{
+              background:
+                "linear-gradient(rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.016) 100%)",
+              boxShadow:
+                "rgba(255,255,255,0.06) 0px 1px 0px inset, rgba(0,0,0,0.6) 0px 8px 18px -8px",
+            }}
+          >
+            {isMuted ? <MutedIcon /> : <VolumeIcon />}
+          </button>
+        ) : null}
+
+        <div className="relative z-10 flex h-full flex-col justify-end px-6 pb-10 md:px-12 lg:px-20 xl:px-24">
+          <div
+          className="w-full max-w-2xl text-left"
+          onMouseEnter={() => setShowOverview(true)}
+          onMouseLeave={() => setShowOverview(false)}
+        >
+            <div
+              className={`origin-left transition-all duration-500 ease-out ${
+                hasEntered ? "mb-5 scale-100" : "mb-2 scale-[0.8]"
+              }`}
+            >
+              {details.logoPath ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={getLogoUrl(details.logoPath) ?? undefined}
+                  alt={details.title}
+                  className="h-auto max-h-[72px] max-w-[240px] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)] md:max-h-[96px] md:max-w-[340px]"
+                />
+              ) : (
+                <h1 className="font-sans text-3xl font-black leading-[0.95] tracking-[-0.03em] text-text-hi md:text-5xl">
+                  {details.title}
+                </h1>
               )}
             </div>
 
-            {details.genres.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {details.genres.map((genre) => (
-                  <span
-                    key={genre.id}
-                    className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-medium text-foreground/90"
-                  >
-                    {genre.name}
+            <div
+              className={`mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 overflow-hidden text-[13px] text-white/85 transition-all duration-500 ease-out ${
+                hasEntered ? "max-h-[64px] opacity-100" : "max-h-0 opacity-0"
+              }`}
+              style={{ textShadow: "rgba(0,0,0,0.65) 0px 1px 4px" }}
+            >
+              {details.voteAverage > 0 ? (
+                <span className="inline-flex items-center gap-1.5 text-accent-hi">
+                  <StarIcon size={13} className="fill-primary text-primary" />
+                  <span className="tabular-nums font-medium">
+                    {details.voteAverage.toFixed(0)}
                   </span>
-                ))}
-              </div>
+                </span>
+              ) : null}
+              {details.releaseDate ? (
+                <DetailMetaItem value={getYear(details.releaseDate)} />
+              ) : null}
+              {"runtime" in details && details.runtime ? (
+                <DetailMetaItem value={formatRuntime(details.runtime)} isNumeric />
+              ) : null}
+              {details.genres.map((genre) => (
+                <DetailMetaItem key={genre.id} value={genre.name} />
+              ))}
+            </div>
+
+            {details.overview ? (
+              <p
+                className={`max-w-xl overflow-hidden text-[14px] leading-relaxed text-white/85 transition-all duration-500 ease-out md:text-[15px] ${
+                  showOverview
+                    ? "mb-7 max-h-[140px] opacity-100 line-clamp-3"
+                    : "mb-0 max-h-0 opacity-0"
+                }`}
+                style={{ textShadow: "rgba(0,0,0,0.65) 0px 1px 4px" }}
+              >
+                {details.overview}
+              </p>
             ) : null}
 
-            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              {details.overview || "No overview available."}
-            </p>
-
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
               <Link
-                href={getPlayHref(mediaType, details.id)}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-7 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/80"
+                href={getPlayHref(details.mediaType, details.id)}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-text-hi text-[#05070a] transition-all duration-200 hover:bg-white hover:shadow-glow active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neo-bg md:h-auto md:w-auto md:gap-3 md:px-7 md:py-2.5"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                  <path d="M8 5v14l11-7z" />
+                <svg
+                  className="h-5 w-5 fill-current md:h-[22px] md:w-[22px]"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <polygon points="5,3 19,12 5,21" />
                 </svg>
-                Play
+                <span className="hidden md:inline">Play</span>
               </Link>
 
               <button
                 type="button"
                 aria-label={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
-                onClick={toggleWatchlist}
+                onClick={handleWatchlist}
                 disabled={isWatchlistLoading}
-                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-150 disabled:opacity-60 ${
-                  inWatchlist
-                    ? "border-primary bg-primary/15 text-primary"
-                    : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                <HeartIcon className="h-5 w-5" filled={inWatchlist} />
-              </button>
-
-              <button
-                type="button"
-                aria-label="Download"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 shadow-lg transition-all duration-200 hover:scale-105 hover:bg-white/20 focus:outline-none disabled:opacity-60 md:h-12 md:w-12"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  className="h-5 w-5"
+                  className="h-[18px] w-[18px]"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
                   aria-hidden="true"
                 >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
               </button>
 
-              {mediaType === "tv" ? (
-                <button
-                  type="button"
-                  onClick={() => setShowSimilar(false)}
-                  className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-secondary"
+              {isTv ? (
+                <a
+                  href="#episodes-section"
+                  className="flex h-10 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 text-[12px] font-medium text-white backdrop-blur-xl transition-all duration-200 hover:bg-white/20 md:px-4 md:text-[13px]"
                 >
-                  Episodes
-                </button>
+                  <ListOrderedIcon size={16} />
+                  <span className="truncate">Episodes</span>
+                </a>
               ) : null}
 
               <button
                 type="button"
-                onClick={() => {
-                  setShowSimilar(true);
-                  window.setTimeout(scrollToSimilar, 50);
-                }}
-                className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-secondary"
+                className="flex h-10 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 text-[12px] font-medium text-white backdrop-blur-xl transition-all duration-200 hover:bg-white/20 md:px-4 md:text-[13px]"
               >
-                Similars
+                <SparklesIcon size={16} />
+                <span className="truncate">Similars</span>
               </button>
             </div>
           </div>
         </div>
+      </div>
 
-        <div ref={similarRef} className="scroll-mt-16">
-          {"seasons" in details && !showSimilar ? (
-            <EpisodesSection tvId={details.id} seasons={details.seasons} />
-          ) : null}
-
-          {mediaType === "movie" ? <CastRow cast={details.cast} /> : null}
-
-          {mediaType === "movie" ? (
-            <RecommendationsRow title="You may like" items={details.recommendations} />
-          ) : null}
-
-          {showSimilar ? (
-            <RecommendationsRow
-              title={mediaType === "tv" ? "You may like" : "Similars"}
-              items={details.similar}
-            />
-          ) : null}
+      <div className="z-[1] w-full px-8 pb-4 md:px-16 lg:px-24 lg:pb-20">
+        {isTv && "seasons" in details ? (
+          <EpisodesSection
+            tvId={details.id}
+            seasons={details.seasons}
+            onReady={handleEpisodeReady}
+          />
+        ) : null}
+        <div className="mt-14">
+          <CastRow cast={details.cast} />
+        </div>
+        <div className="mt-14">
+          <RecommendationsRow
+            title="You may like"
+            items={
+              details.similar.length > 0 ? details.similar : details.recommendations
+            }
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function findTrailer(videos: MovieDetails["videos"]): (MovieDetails["videos"])[number] | undefined {
-  const youtubeVideos = videos.filter((video) => video.site.toLowerCase() === "youtube");
+interface DetailMetaItemProps {
+  value: string;
+  isNumeric?: boolean;
+}
+
+function DetailMetaItem({ value, isNumeric = false }: DetailMetaItemProps) {
+  return (
+    <span className="inline-flex items-center gap-2.5">
+      <span aria-hidden="true" className="select-none text-white/35">
+        ·
+      </span>
+      <span className={isNumeric ? "tabular-nums" : undefined}>{value}</span>
+    </span>
+  );
+}
+
+function findTrailer(
+  videos: MovieDetails["videos"]
+): MovieDetails["videos"][number] | undefined {
+  const youtubeVideos = videos.filter((video) =>
+    video.site.toLowerCase() === "youtube"
+  );
 
   return (
     youtubeVideos.find((video) => video.type === "Trailer") ??
@@ -318,38 +425,39 @@ function findTrailer(videos: MovieDetails["videos"]): (MovieDetails["videos"])[n
   );
 }
 
-function MutedIcon({ className }: { className: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M11 5 6 9H2v6h4l5 4V5z" />
-      <line x1="22" x2="16" y1="9" y2="15" />
-      <line x1="16" x2="22" y1="9" y2="15" />
-    </svg>
-  );
-}
-
-function VolumeIcon({ className }: { className: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M11 5 6 9H2v6h4l5 4V5z" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
-  );
-}
-
-function HeartIcon({ className, filled }: { className: string; filled: boolean }) {
+function MutedIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={className}
-      fill={filled ? "currentColor" : "none"}
+      className="h-[18px] w-[18px]"
+      fill="none"
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+      <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
+      <line x1="22" x2="16" y1="9" y2="15" />
+      <line x1="16" x2="22" y1="9" y2="15" />
+    </svg>
+  );
+}
+
+function VolumeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-[18px] w-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
     </svg>
   );
 }

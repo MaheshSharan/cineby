@@ -25,7 +25,7 @@ import {
 } from "./validate";
 
 const TV_DETAILS_APPEND =
-  "credits,external_ids,videos,recommendations,translations,similar,content_ratings";
+  "credits,external_ids,videos,recommendations,translations,similar,content_ratings,images";
 
 export async function getTvDetails(id: string | number): Promise<TvDetails> {
   const { defaultLanguage } = getTmdbConfig();

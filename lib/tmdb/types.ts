@@ -75,6 +75,7 @@ export interface Company {
 export interface MovieDetails extends MediaSummary {
   originalTitle: string;
   tagline: string | null;
+  logoPath: string | null;
   status: string | null;
   runtime: number | null;
   budget: number | null;
@@ -109,6 +110,7 @@ export interface CreatedBy {
 export interface TvDetails extends MediaSummary {
   originalName: string;
   tagline: string | null;
+  logoPath: string | null;
   status: string | null;
   numberOfSeasons: number;
   numberOfEpisodes: number;

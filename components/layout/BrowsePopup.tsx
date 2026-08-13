@@ -11,21 +11,13 @@ import {
   HeartIcon,
   PartyPopperIcon,
   ProjectorIcon,
-  SlidersHorizontalIcon,
   TvIcon,
-  XIcon,
 } from "@/components/ui/icons";
 
 const CONTENT_LINKS = [
   { label: "Movies", href: "/browse/movie", Icon: ClapperboardIcon },
   { label: "TV Shows", href: "/browse/tv", Icon: TvIcon },
   { label: "Anime", href: "/browse/anime", Icon: FanIcon },
-];
-
-const FEATURE_LINKS = [
-  { label: "Channels", Icon: AntennaIcon },
-  { label: "4K", Icon: ProjectorIcon },
-  { label: "Watch Party", Icon: PartyPopperIcon },
 ];
 
 export function BrowsePopup() {

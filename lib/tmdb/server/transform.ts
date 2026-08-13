@@ -11,14 +11,13 @@ import type {
   MediaSummary,
   MediaVideo,
   MovieDetails,
+  MediaType,
   Paginated,
   Poster,
   Season,
   SeasonEpisodes,
   TvDetails,
 } from "../types";
-
-type MediaType = "movie" | "tv";
 
 function nullableString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
@@ -34,10 +33,6 @@ function asNumber(value: unknown): number {
 
 function asNumberArray(value: unknown): number[] {
   return Array.isArray(value) ? value.filter((item): item is number => typeof item === "number") : [];
-}
-
-function asStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function recordArray(value: unknown): Record<string, unknown>[] {
@@ -157,6 +152,12 @@ function toTvCertification(value: unknown): string | null {
   return nullableString(rated?.rating);
 }
 
+function toLogoPath(images: unknown): string | null {
+  const logos = recordArray(asRecord(images)?.logos);
+
+  return nullableString(logos[0]?.file_path);
+}
+
 export function toMovieDetails(raw: Record<string, unknown>): MovieDetails {
   const mediaType: MediaType = "movie";
 
@@ -168,6 +169,7 @@ export function toMovieDetails(raw: Record<string, unknown>): MovieDetails {
     runtime: finiteNumber(raw.runtime),
     budget: finiteNumber(raw.budget),
     revenue: finiteNumber(raw.revenue),
+    logoPath: toLogoPath(raw.images),
     genres: toGenreListValue(raw.genres),
     productionCompanies: toCompanies(raw.production_companies),
     cast: toCast(raw.credits),
@@ -176,7 +178,7 @@ export function toMovieDetails(raw: Record<string, unknown>): MovieDetails {
     recommendations: toRecommendations(raw.recommendations, mediaType),
     similar: toRecommendations(raw.similar, mediaType),
     certification: toCertification(raw.release_dates),
-    imdbId: nullableString((raw.external_ids as Record<string, unknown> | undefined)?.imdb_id),
+    imdbId: nullableString(asRecord(raw.external_ids)?.imdb_id),
   };
 }
 
@@ -203,6 +205,7 @@ export function toTvDetails(raw: Record<string, unknown>): TvDetails {
     numberOfSeasons: asNumber(raw.number_of_seasons),
     numberOfEpisodes: asNumber(raw.number_of_episodes),
     episodeRunTime: asNumberArray(raw.episode_run_time),
+    logoPath: toLogoPath(raw.images),
     genres: toGenreListValue(raw.genres),
     networks: toCompanies(raw.networks),
     seasons: toSeasons(raw.seasons),
@@ -217,7 +220,7 @@ export function toTvDetails(raw: Record<string, unknown>): TvDetails {
     recommendations: toRecommendations(raw.recommendations, mediaType),
     similar: toRecommendations(raw.similar, mediaType),
     certification: toTvCertification(raw.content_ratings),
-    imdbId: nullableString((raw.external_ids as Record<string, unknown> | undefined)?.imdb_id),
+    imdbId: nullableString(asRecord(raw.external_ids)?.imdb_id),
   };
 }
 
@@ -275,5 +278,3 @@ export function toSeasonEpisodes(raw: Record<string, unknown>): SeasonEpisodes {
     episodes: recordArray(raw.episodes).map(toEpisode),
   };
 }
-
-export { asNumber, asStringArray, nullableString, recordArray };

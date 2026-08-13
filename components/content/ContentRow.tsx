@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, useEffect, type ReactNode } from "react";
 
 interface ContentRowProps {
-  title?: string;
+  title?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -51,7 +51,7 @@ export function ContentRow({ title, action, children, className = "" }: ContentR
       {title || action ? (
         <div className="mb-5 flex items-center justify-between gap-4">
           {title ? (
-            <h2 className="heading-trail min-w-0 truncate text-xl font-semibold text-text-hi md:text-2xl">
+            <h2 className="heading-trail text-xl font-semibold text-text-hi md:text-2xl">
               {title}
             </h2>
           ) : (

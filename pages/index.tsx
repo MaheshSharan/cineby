@@ -12,6 +12,7 @@ import {
 
 import { GenreBrowse } from "@/components/home/GenreBrowse";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
+import { OnlyOnRow } from "@/components/home/OnlyOnRow";
 import { TabbedContentRow } from "@/components/home/TabbedContentRow";
 import { TopTenRow } from "@/components/home/TopTenRow";
 
@@ -23,6 +24,7 @@ interface HomePageProps {
   topTenItems: MediaSummary[];
   trendingMovies: MediaSummary[];
   trendingSeries: MediaSummary[];
+  onlyOnNetflix: MediaSummary[];
   topRatedMovies: MediaSummary[];
   topRatedSeries: MediaSummary[];
   genreNames: Record<number, string>;
@@ -35,6 +37,7 @@ const Home: NextPage<HomePageProps> = ({
   topTenItems,
   trendingMovies,
   trendingSeries,
+  onlyOnNetflix,
   topRatedMovies,
   topRatedSeries,
   genreNames,
@@ -62,6 +65,8 @@ const Home: NextPage<HomePageProps> = ({
           series={trendingSeries}
         />
 
+        <OnlyOnRow initialItems={onlyOnNetflix} />
+
         <TabbedContentRow
           title="Top rated"
           movies={topRatedMovies}
@@ -80,6 +85,7 @@ export const getServerSideProps: GetServerSideProps<HomePageProps> = async () =>
     topTen,
     trendingMovies,
     trendingSeries,
+    onlyOnNetflix,
     topRatedMovies,
     topRatedSeries,
     movieGenres,
@@ -89,6 +95,7 @@ export const getServerSideProps: GetServerSideProps<HomePageProps> = async () =>
     getTrending("all", "week"),
     getTrending("movie", "day"),
     getTrending("tv", "day"),
+    discoverMovies({ providerId: 8, watchRegion: "IN", page: 1 }),
     getTopRatedMovies(),
     getTopRatedTv(),
     getGenres("movie"),
@@ -107,6 +114,7 @@ export const getServerSideProps: GetServerSideProps<HomePageProps> = async () =>
       topTenItems: topTen.results.slice(0, TOP_TEN_ITEMS),
       trendingMovies: trendingMovies.results,
       trendingSeries: trendingSeries.results,
+      onlyOnNetflix: onlyOnNetflix.results,
       topRatedMovies: topRatedMovies.results,
       topRatedSeries: topRatedSeries.results,
       genreNames,

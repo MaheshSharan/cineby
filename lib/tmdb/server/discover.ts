@@ -6,6 +6,8 @@ import { validatePaginatedResponse } from "./validate";
 
 export interface DiscoverOptions {
   genreId?: number;
+  providerId?: number;
+  watchRegion?: string;
   sortBy?: string;
   page?: number;
   year?: number;
@@ -33,6 +35,8 @@ async function discover(
       sort_by: options.sortBy ?? "popularity.desc",
       page: options.page ?? 1,
       with_genres: options.genreId,
+      with_watch_providers: options.providerId,
+      watch_region: options.providerId ? (options.watchRegion ?? "IN") : undefined,
       year: options.year,
     },
   });

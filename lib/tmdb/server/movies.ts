@@ -1,9 +1,8 @@
-import type { ImageSet, MediaSummary, MovieDetails, Paginated } from "../types";
+import type { MediaSummary, MovieDetails, Paginated } from "../types";
 import { tmdbGet } from "./client";
 import { getTmdbConfig } from "./config";
-import { toImageSet, toMediaSummary, toMovieDetails, toPaginated } from "./transform";
+import { toMediaSummary, toMovieDetails, toPaginated } from "./transform";
 import {
-  validateImageSet,
   validateMovieDetails,
   validatePaginatedResponse,
 } from "./validate";
@@ -50,15 +49,4 @@ export async function getTopRatedMovies(page = 1): Promise<Paginated<MediaSummar
   const { results, totalPages, totalResults } = validatePaginatedResponse(raw);
 
   return toPaginated(results, page, totalPages, totalResults, (item) => toMediaSummary(item, "movie"));
-}
-
-export async function getMovieImages(id: string | number): Promise<ImageSet> {
-  const { defaultLanguage } = getTmdbConfig();
-
-  const raw = await tmdbGet<unknown>({
-    path: `/movie/${id}/images`,
-    params: { include_image_language: `${defaultLanguage},${defaultLanguage},null` },
-  });
-
-  return toImageSet(validateImageSet(raw));
 }

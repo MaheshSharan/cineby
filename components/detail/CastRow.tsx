@@ -1,14 +1,24 @@
+import { useState } from "react";
+
 import type { CastMember } from "@/lib/tmdb";
 import { getProfileUrl } from "@/lib/tmdb/image";
+import { ChevronDownIcon } from "@/components/ui/icons";
+
+const COLLAPSED_COUNT = 12;
 
 interface CastRowProps {
   cast: CastMember[];
 }
 
 export function CastRow({ cast }: CastRowProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (cast.length === 0) {
     return null;
   }
+
+  const hasMore = cast.length > COLLAPSED_COUNT;
+  const visibleCast = hasMore && !isExpanded ? cast.slice(0, COLLAPSED_COUNT) : cast;
 
   return (
     <div>
@@ -19,7 +29,7 @@ export function CastRow({ cast }: CastRowProps) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {cast.map((member) => (
+        {visibleCast.map((member) => (
           <div
             key={member.id}
             className="group flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3 transition-all duration-200 hover:border-primary/40 hover:bg-white/[0.05]"
@@ -55,6 +65,25 @@ export function CastRow({ cast }: CastRowProps) {
           </div>
         ))}
       </div>
+
+      {hasMore ? (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? "Collapse cast list" : "Expand cast list"}
+            className="group flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-text-mid shadow-lg backdrop-blur-xl transition-all duration-200 hover:border-primary/40 hover:bg-white/[0.07] hover:text-text-hi hover:scale-105 active:scale-95"
+          >
+            <ChevronDownIcon
+              size={18}
+              className={`transition-transform duration-300 ease-out ${
+                isExpanded ? "rotate-180 text-primary" : "group-hover:text-white"
+              }`}
+            />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

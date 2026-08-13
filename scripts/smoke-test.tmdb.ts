@@ -1,13 +1,9 @@
 import {
   getTrending,
   getPopularMovies,
-  getPopularTv,
   getTopRatedMovies,
-  getTopRatedTv,
   getMovieDetails,
   getTvDetails,
-  getMovieImages,
-  getEpisodeExternalIds,
   getGenres,
   searchMulti,
   discoverMovies,
@@ -31,9 +27,6 @@ async function run() {
   const popularMovies = await getPopularMovies();
   check("movie/popular", popularMovies.results.length > 0 && popularMovies.results[0].mediaType === "movie", `n=${popularMovies.results.length}`);
 
-  const popularTv = await getPopularTv();
-  check("tv/popular", popularTv.results.length > 0 && popularTv.results[0].mediaType === "tv", `n=${popularTv.results.length}`);
-
   const topRated = await getTopRatedMovies();
   check("movie/top_rated", topRated.results.length > 0, `n=${topRated.results.length}`);
 
@@ -48,12 +41,6 @@ async function run() {
 
   const tv = await getTvDetails(TV_ID);
   check("tv details", tv.id === TV_ID, `name=${tv.title}, seasons=${tv.numberOfSeasons}, cert=${tv.certification}, cast=${tv.cast.length}, videos=${tv.videos.length}`);
-
-  const images = await getMovieImages(MOVIE_ID);
-  check("movie images", images.backdrops.length > 0, `backdrops=${images.backdrops.length}`);
-
-  const episode = await getEpisodeExternalIds(TV_ID, 1, 1);
-  check("episode external_ids", episode.imdbId !== null || episode.tvdbId !== null, `imdb=${episode.imdbId}`);
 
   const discover = await discoverMovies({ genreId: 28, sortBy: "popularity.desc" });
   check("discover/movie by genre", discover.results.length > 0, `n=${discover.results.length}, first=${discover.results[0].title}`);

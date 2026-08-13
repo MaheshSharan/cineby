@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { MediaSummary } from "@/lib/tmdb";
 import { discoverMovies, discoverTv } from "@/lib/tmdb/server";
+import { logError } from "@/lib/logger";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
@@ -30,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // Interleave movies and TV shows
-    const results = [];
+    const results: MediaSummary[] = [];
     const maxLen = Math.max(moviesData.results.length, tvData.results.length);
 
     for (let i = 0; i < maxLen; i += 1) {
@@ -40,7 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(200).json({ results });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    res.status(500).json({ message });
+    logError("api/discover/provider", error);
+    res.status(500).json({ error: "Failed to discover provider content" });
   }
 }
+

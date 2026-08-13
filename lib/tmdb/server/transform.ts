@@ -1,19 +1,15 @@
 import type {
-  Backdrop,
   CastMember,
   Company,
   CrewMember,
   Episode,
-  EpisodeExternalIds,
   Genre,
   GenreList,
-  ImageSet,
   MediaSummary,
   MediaVideo,
   MovieDetails,
   MediaType,
   Paginated,
-  Poster,
   Season,
   SeasonEpisodes,
   TvDetails,
@@ -221,37 +217,6 @@ export function toTvDetails(raw: Record<string, unknown>): TvDetails {
     similar: toRecommendations(raw.similar, mediaType),
     certification: toTvCertification(raw.content_ratings),
     imdbId: nullableString(asRecord(raw.external_ids)?.imdb_id),
-  };
-}
-
-function toBackdrops(value: unknown): Backdrop[] {
-  return recordArray(value).map((backdrop): Backdrop => ({
-    filePath: nullableString(backdrop.file_path) ?? "",
-    width: asNumber(backdrop.width),
-    height: asNumber(backdrop.height),
-    iso6391: nullableString(backdrop.iso_639_1),
-  }));
-}
-
-function toPosters(value: unknown): Poster[] {
-  return recordArray(value).map((poster): Poster => ({
-    filePath: nullableString(poster.file_path) ?? "",
-    width: asNumber(poster.width),
-    height: asNumber(poster.height),
-  }));
-}
-
-export function toImageSet(raw: Record<string, unknown>): ImageSet {
-  return {
-    backdrops: toBackdrops(raw.backdrops),
-    posters: toPosters(raw.posters),
-  };
-}
-
-export function toEpisodeExternalIds(raw: Record<string, unknown>): EpisodeExternalIds {
-  return {
-    imdbId: nullableString(raw.imdb_id),
-    tvdbId: finiteNumber(raw.tvdb_id),
   };
 }
 

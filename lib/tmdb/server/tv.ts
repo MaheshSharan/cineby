@@ -1,25 +1,14 @@
 import type {
-  EpisodeExternalIds,
-  ImageSet,
-  MediaSummary,
-  Paginated,
   SeasonEpisodes,
   TvDetails,
 } from "../types";
 import { tmdbGet } from "./client";
 import { getTmdbConfig } from "./config";
 import {
-  toEpisodeExternalIds,
-  toImageSet,
-  toMediaSummary,
-  toPaginated,
   toSeasonEpisodes,
   toTvDetails,
 } from "./transform";
 import {
-  validateEpisodeExternalIds,
-  validateImageSet,
-  validatePaginatedResponse,
   validateSeasonEpisodes,
   validateTvDetails,
 } from "./validate";
@@ -42,43 +31,6 @@ export async function getTvDetails(id: string | number): Promise<TvDetails> {
   return toTvDetails(validateTvDetails(raw));
 }
 
-export async function getPopularTv(page = 1): Promise<Paginated<MediaSummary>> {
-  const { defaultLanguage } = getTmdbConfig();
-
-  const raw = await tmdbGet<unknown>({
-    path: "/tv/popular",
-    params: { language: defaultLanguage, page },
-  });
-
-  const { results, totalPages, totalResults } = validatePaginatedResponse(raw);
-
-  return toPaginated(results, page, totalPages, totalResults, (item) => toMediaSummary(item, "tv"));
-}
-
-export async function getTopRatedTv(page = 1): Promise<Paginated<MediaSummary>> {
-  const { defaultLanguage } = getTmdbConfig();
-
-  const raw = await tmdbGet<unknown>({
-    path: "/tv/top_rated",
-    params: { language: defaultLanguage, page },
-  });
-
-  const { results, totalPages, totalResults } = validatePaginatedResponse(raw);
-
-  return toPaginated(results, page, totalPages, totalResults, (item) => toMediaSummary(item, "tv"));
-}
-
-export async function getTvImages(id: string | number): Promise<ImageSet> {
-  const { defaultLanguage } = getTmdbConfig();
-
-  const raw = await tmdbGet<unknown>({
-    path: `/tv/${id}/images`,
-    params: { include_image_language: `${defaultLanguage},${defaultLanguage},null` },
-  });
-
-  return toImageSet(validateImageSet(raw));
-}
-
 export async function getSeasonEpisodes(
   id: string | number,
   seasonNumber: string | number
@@ -91,17 +43,4 @@ export async function getSeasonEpisodes(
   });
 
   return toSeasonEpisodes(validateSeasonEpisodes(raw));
-}
-
-export async function getEpisodeExternalIds(
-  id: string | number,
-  seasonNumber: string | number,
-  episodeNumber: string | number
-): Promise<EpisodeExternalIds> {
-  const raw = await tmdbGet<unknown>({
-    path: `/tv/${id}/season/${seasonNumber}/episode/${episodeNumber}`,
-    params: { append_to_response: "external_ids" },
-  });
-
-  return toEpisodeExternalIds(validateEpisodeExternalIds(raw));
 }

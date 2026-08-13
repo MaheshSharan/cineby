@@ -18,9 +18,6 @@ export function Header() {
       setIsAccountOpen(true);
     } else {
       openAuthModal("login");
-      if (window.location.pathname !== "/login") {
-        window.history.pushState(null, "", "/login");
-      }
     }
   };
 

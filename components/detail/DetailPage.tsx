@@ -201,7 +201,6 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
             className="absolute inset-0 w-full overflow-hidden transition-opacity duration-300 ease-in-out"
             style={{ opacity: trailerReady ? 1 : 0 }}
           >
-            {/* eslint-disable-next-line react/iframe-missing-sandbox */}
             <iframe
               key={isMuted ? "muted" : "unmuted"}
               src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=${
@@ -216,6 +215,7 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
                 transformOrigin: "center center",
                 pointerEvents: "none",
               }}
+              sandbox="allow-scripts allow-same-origin allow-presentation"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
               onLoad={() => setTrailerReady(true)}

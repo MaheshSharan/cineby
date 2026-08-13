@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { useCallback, useEffect, useState } from "react";
 
 import { LockIcon, UserRoundIcon, XIcon } from "@/components/ui/icons";
 
@@ -21,10 +22,18 @@ export function AuthModal({
   onAuthenticated,
   showToast,
 }: AuthModalProps) {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleClose = useCallback(() => {
+    onClose(mode);
+    if (router.pathname === "/login" || router.pathname === "/register") {
+      router.push("/", undefined, { shallow: true });
+    }
+  }, [mode, onClose, router]);
 
   useEffect(() => {
     if (!open) {
@@ -46,21 +55,16 @@ export function AuthModal({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
-
-  const handleClose = () => {
-    onClose(mode);
-    if (window.location.pathname === "/login" || window.location.pathname === "/register") {
-      window.history.pushState(null, "", "/");
-    }
-  };
+  }, [open, handleClose]);
 
   const handleTabChange = (newMode: AuthMode) => {
     onModeChange(newMode);
     setError(null);
-    const newPath = newMode === "login" ? "/login" : "/register";
-    if (window.location.pathname !== newPath) {
-      window.history.pushState(null, "", newPath);
+    if (router.pathname === "/login" || router.pathname === "/register") {
+      const newPath = newMode === "login" ? "/login" : "/register";
+      if (router.pathname !== newPath) {
+        router.push(newPath, undefined, { shallow: true });
+      }
     }
   };
 

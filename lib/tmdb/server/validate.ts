@@ -85,21 +85,6 @@ export function validateGenreList(value: unknown): Record<string, unknown>[] {
   return value.genres as Record<string, unknown>[];
 }
 
-export function validateImageSet(value: unknown): Record<string, unknown> {
-  if (!isRecord(value) || !Array.isArray(value.backdrops)) {
-    throw new InvalidTmdbResponseError("expected an object with a backdrops array");
-  }
-
-  return value;
-}
-
-export function validateEpisodeExternalIds(value: unknown): Record<string, unknown> {
-  if (!isRecord(value) || !isRecord(value.external_ids)) {
-    throw new InvalidTmdbResponseError("expected an object with an external_ids object");
-  }
-
-  return value.external_ids as Record<string, unknown>;
-}
 
 export function validateSeasonEpisodes(value: unknown): Record<string, unknown> {
   if (!isRecord(value) || typeof value.id !== "number" || !Array.isArray(value.episodes)) {

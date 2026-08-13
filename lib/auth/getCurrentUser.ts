@@ -20,6 +20,7 @@ export function getCurrentUser(req: CookieRequest): User | null {
     id: session.user_id,
     email: session.email,
     displayName: session.display_name,
+    avatarUrl: session.avatar_url ?? null,
     createdAt: session.user_created_at,
   };
 }

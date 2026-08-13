@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -17,11 +17,21 @@ interface AccountDrawerProps {
 }
 
 function formatCreatedAt(value?: string): string {
-  if (!value) return "8/13/2026";
+  if (!value) {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "numeric",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date());
+  }
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "8/13/2026";
+    return new Intl.DateTimeFormat("en-US", {
+      month: "numeric",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date());
   }
 
   return new Intl.DateTimeFormat("en-US", {
@@ -32,11 +42,24 @@ function formatCreatedAt(value?: string): string {
 }
 
 export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh, showToast } = useAuth();
   const asideRef = useRef<HTMLElement>(null);
+
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
   useEffect(() => {
     if (!open) {
+      setIsChangingPassword(false);
+      setPasswordError(null);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
       return;
     }
 
@@ -56,7 +79,90 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
     await logout();
   };
 
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showToast("Please select a valid image file (PNG, JPG, WebP).");
+      return;
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      showToast("Avatar image must be smaller than 3MB.");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64Data = reader.result as string;
+        const response = await fetch("/api/auth/avatar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatar: base64Data }),
+        });
+
+        const data = (await response.json()) as { error?: string };
+        if (!response.ok) {
+          showToast(data.error ?? "Failed to update avatar.");
+          return;
+        }
+
+        await refresh();
+        showToast("Avatar updated successfully!");
+      } catch {
+        showToast("Failed to upload avatar.");
+      } finally {
+        setIsUploadingAvatar(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePasswordSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+    try {
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        setPasswordError(data.error ?? "Failed to change password.");
+        return;
+      }
+
+      showToast("Password updated successfully!");
+      setIsChangingPassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      setPasswordError("Unable to change password. Please try again.");
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  };
+
   const username = user?.displayName || user?.email.split("@")[0] || "User";
+  const avatarSrc = user?.avatarUrl || "/default-avatar.jpeg";
 
   return (
     <>
@@ -92,9 +198,9 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
             <div className="flex flex-col items-center">
               <div className="group relative mb-6">
                 <div className="relative">
-                  <div className="glass-card-subtle h-24 w-24 rounded-full border border-primary/30 p-1 shadow-lg shadow-primary/10">
+                  <div className="glass-card-subtle h-24 w-24 rounded-full border border-primary/30 p-1 shadow-lg shadow-primary/10 overflow-hidden">
                     <img
-                      src="/default-avatar.jpeg"
+                      src={avatarSrc}
                       alt={username}
                       className="h-full w-full rounded-full object-cover"
                     />
@@ -126,7 +232,9 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
                   type="file"
                   name="avatar"
                   id="avatar"
-                  accept="image/png, image/jpeg"
+                  accept="image/png, image/jpeg, image/webp"
+                  onChange={handleAvatarChange}
+                  disabled={isUploadingAvatar}
                   className="hidden"
                 />
                 <label
@@ -137,20 +245,81 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
                     <UploadIcon size={18} className="text-primary" />
                   </div>
                   <span className="text-sm font-medium text-gray-300 transition-colors group-hover:text-white">
-                    Upload avatar
+                    {isUploadingAvatar ? "Uploading avatar…" : "Upload avatar"}
                   </span>
                 </label>
-                <button
-                  type="button"
-                  className="glass-card-subtle group flex w-full items-center gap-3 rounded-xl border border-gray-400/20 p-3 transition-all duration-200 hover:border-primary/30"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 transition-colors group-hover:bg-primary/30">
-                    <LockIcon size={18} className="text-primary" />
-                  </div>
-                  <span className="text-sm font-medium text-gray-300 transition-colors group-hover:text-white">
-                    Change password
-                  </span>
-                </button>
+
+                {!isChangingPassword ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsChangingPassword(true)}
+                    className="glass-card-subtle group flex w-full items-center gap-3 rounded-xl border border-gray-400/20 p-3 transition-all duration-200 hover:border-primary/30"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 transition-colors group-hover:bg-primary/30">
+                      <LockIcon size={18} className="text-primary" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-300 transition-colors group-hover:text-white">
+                      Change password
+                    </span>
+                  </button>
+                ) : (
+                  <form onSubmit={handlePasswordSubmit} className="glass-card-subtle rounded-xl border border-primary/30 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-text-hi uppercase tracking-wider">Change Password</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsChangingPassword(false);
+                          setPasswordError(null);
+                        }}
+                        className="text-xs text-text-mid hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+
+                    <input
+                      type="password"
+                      placeholder="Current password"
+                      required
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="glass-card-subtle w-full rounded-lg border border-white/15 bg-transparent px-3 py-2 text-xs text-white placeholder:text-white/60 focus:border-primary focus:outline-none"
+                    />
+                    <input
+                      type="password"
+                      placeholder="New password (min 8 chars)"
+                      required
+                      minLength={8}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="glass-card-subtle w-full rounded-lg border border-white/15 bg-transparent px-3 py-2 text-xs text-white placeholder:text-white/60 focus:border-primary focus:outline-none"
+                    />
+                    <input
+                      type="password"
+                      placeholder="Confirm new password"
+                      required
+                      minLength={8}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="glass-card-subtle w-full rounded-lg border border-white/15 bg-transparent px-3 py-2 text-xs text-white placeholder:text-white/60 focus:border-primary focus:outline-none"
+                    />
+
+                    {passwordError ? (
+                      <p role="alert" className="text-xs text-accent-hi">
+                        {passwordError}
+                      </p>
+                    ) : null}
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingPassword}
+                      className="w-full rounded-lg bg-primary py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                    >
+                      {isSubmittingPassword ? "Updating…" : "Update Password"}
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
 
@@ -170,3 +339,4 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
     </>
   );
 }
+

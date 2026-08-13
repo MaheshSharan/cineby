@@ -7,16 +7,15 @@ import {
   SESSION_TTL_MS,
 } from "@/lib/auth/session";
 import { createSession } from "@/lib/db/sessions";
-import { createUser, findUserByEmail, toPublicUser } from "@/lib/db/users";
+import { createUser, findUserByIdentifier, toPublicUser } from "@/lib/db/users";
 import { logError } from "@/lib/logger";
 
 interface RegisterBody {
   email?: unknown;
+  username?: unknown;
   password?: unknown;
   displayName?: unknown;
 }
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -26,14 +25,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const body = (req.body ?? {}) as RegisterBody;
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const rawIdentifier =
+    typeof body.username === "string" && body.username.trim()
+      ? body.username.trim()
+      : typeof body.email === "string" && body.email.trim()
+      ? body.email.trim()
+      : "";
+  const identifier = rawIdentifier.toLowerCase();
   const password = typeof body.password === "string" ? body.password : "";
   const rawDisplayName =
-    typeof body.displayName === "string" ? body.displayName.trim() : "";
+    typeof body.displayName === "string" && body.displayName.trim()
+      ? body.displayName.trim()
+      : rawIdentifier;
   const displayName = rawDisplayName ? rawDisplayName.slice(0, 60) : null;
 
-  if (!EMAIL_PATTERN.test(email)) {
-    res.status(400).json({ error: "Enter a valid email address." });
+  if (!rawIdentifier || rawIdentifier.length < 3) {
+    res.status(400).json({ error: "Username or email must be at least 3 characters." });
     return;
   }
 
@@ -42,14 +49,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  if (findUserByEmail(email)) {
-    res.status(409).json({ error: "An account with this email already exists." });
+  if (findUserByIdentifier(identifier)) {
+    res.status(409).json({ error: "An account with this username or email already exists." });
     return;
   }
 
   try {
     const passwordHash = await hashPassword(password);
-    const user = createUser(email, passwordHash, displayName);
+    const user = createUser(identifier, passwordHash, displayName);
 
     const token = createSessionToken();
     createSession(user.id, token, new Date(Date.now() + SESSION_TTL_MS).toISOString());

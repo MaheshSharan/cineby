@@ -7,11 +7,12 @@ import {
   SESSION_TTL_MS,
 } from "@/lib/auth/session";
 import { createSession } from "@/lib/db/sessions";
-import { findUserByEmail, toPublicUser } from "@/lib/db/users";
+import { findUserByIdentifier, toPublicUser } from "@/lib/db/users";
 import { logError } from "@/lib/logger";
 
 interface LoginBody {
   email?: unknown;
+  username?: unknown;
   password?: unknown;
 }
 
@@ -23,19 +24,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const body = (req.body ?? {}) as LoginBody;
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const rawIdentifier =
+    typeof body.username === "string" && body.username.trim()
+      ? body.username.trim()
+      : typeof body.email === "string" && body.email.trim()
+      ? body.email.trim()
+      : "";
   const password = typeof body.password === "string" ? body.password : "";
 
-  if (!email || !password) {
-    res.status(400).json({ error: "Email and password are required." });
+  if (!rawIdentifier || !password) {
+    res.status(400).json({ error: "Username/email and password are required." });
     return;
   }
 
   try {
-    const user = findUserByEmail(email);
+    const user = findUserByIdentifier(rawIdentifier);
 
     if (!user || !(await verifyPassword(password, user.password_hash))) {
-      res.status(401).json({ error: "Invalid email or password." });
+      res.status(401).json({ error: "Invalid username/email or password." });
       return;
     }
 

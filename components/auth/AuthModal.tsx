@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { LockIcon, UserRoundIcon, XIcon } from "@/components/ui/icons";
 
-export type AuthMode = "login" | "register";
+export type AuthMode = "login" | "register" | "forgot";
 
 interface AuthModalProps {
   open: boolean;
@@ -25,6 +25,7 @@ export function AuthModal({
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +40,7 @@ export function AuthModal({
     if (!open) {
       setUsername("");
       setPassword("");
+      setConfirmPassword("");
       setError(null);
       setIsSubmitting(false);
     }
@@ -61,7 +63,7 @@ export function AuthModal({
     onModeChange(newMode);
     setError(null);
     if (router.pathname === "/login" || router.pathname === "/register") {
-      const newPath = newMode === "login" ? "/login" : "/register";
+      const newPath = newMode === "login" ? "/login" : newMode === "register" ? "/register" : "/login";
       if (router.pathname !== newPath) {
         router.push(newPath, undefined, { shallow: true });
       }
@@ -73,13 +75,49 @@ export function AuthModal({
     setIsSubmitting(true);
     setError(null);
 
-    const email = username.includes("@") ? username : `${username}@cineby.local`;
+    if (mode === "forgot") {
+      if (password !== confirmPassword) {
+        setError("Passwords do not match.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (password.length < 8) {
+        setError("New password must be at least 8 characters.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, newPassword: password }),
+        });
+
+        const data = (await response.json()) as { error?: string };
+        if (!response.ok) {
+          setError(data.error ?? "Failed to reset password.");
+          return;
+        }
+
+        await onAuthenticated(username, mode);
+        showToast("Password reset successfully!");
+        handleClose();
+      } catch {
+        setError("Something went wrong. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
 
     try {
-      const response = await fetch(mode === "login" ? "/api/auth/login" : "/api/auth/register", {
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, displayName: username }),
+        body: JSON.stringify({ username, password, displayName: username }),
       });
 
       const data = (await response.json()) as { error?: string };
@@ -114,36 +152,40 @@ export function AuthModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={mode === "login" ? "Login" : "Sign up"}
+        aria-label={mode === "login" ? "Login" : mode === "register" ? "Sign up" : "Reset Password"}
         className="glass-card-dark fixed left-1/2 top-1/2 z-[200] w-[90%] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl"
       >
         <div className="flex items-center justify-between border-b border-white/10 p-6">
-          <div className="flex gap-6">
-            <button
-              type="button"
-              onClick={() => handleTabChange("login")}
-              className={`relative px-4 py-2 text-sm font-medium transition-colors ${
-                mode === "login" ? "text-white" : "text-gray-400 hover:text-gray-300"
-              }`}
-            >
-              Login
-              {mode === "login" ? (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
-              ) : null}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabChange("register")}
-              className={`relative px-4 py-2 text-sm font-medium transition-colors ${
-                mode === "register" ? "text-white" : "text-gray-400 hover:text-gray-300"
-              }`}
-            >
-              Sign up
-              {mode === "register" ? (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
-              ) : null}
-            </button>
-          </div>
+          {mode === "forgot" ? (
+            <h2 className="text-base font-semibold text-white">Reset Password</h2>
+          ) : (
+            <div className="flex gap-6">
+              <button
+                type="button"
+                onClick={() => handleTabChange("login")}
+                className={`relative px-4 py-2 text-sm font-medium transition-colors ${
+                  mode === "login" ? "text-white" : "text-gray-400 hover:text-gray-300"
+                }`}
+              >
+                Login
+                {mode === "login" ? (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
+                ) : null}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabChange("register")}
+                className={`relative px-4 py-2 text-sm font-medium transition-colors ${
+                  mode === "register" ? "text-white" : "text-gray-400 hover:text-gray-300"
+                }`}
+              >
+                Sign up
+                {mode === "register" ? (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
+                ) : null}
+              </button>
+            </div>
+          )}
 
           <button
             type="button"
@@ -164,9 +206,9 @@ export function AuthModal({
                 </div>
                 <input
                   type="text"
-                  placeholder="Username"
-                  minLength={4}
-                  maxLength={16}
+                  placeholder="Username or Email"
+                  minLength={3}
+                  maxLength={60}
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -180,7 +222,7 @@ export function AuthModal({
                 </div>
                 <input
                   type="password"
-                  placeholder="Password"
+                  placeholder={mode === "forgot" ? "New Password (min 8 chars)" : "Password"}
                   minLength={8}
                   maxLength={32}
                   required
@@ -189,6 +231,24 @@ export function AuthModal({
                   className="glass-card-subtle w-full rounded-xl border border-white/15 bg-transparent pl-12 pr-4 py-3 text-white placeholder:text-white/60 transition-colors focus:border-primary/50 focus:outline-none"
                 />
               </div>
+
+              {mode === "forgot" ? (
+                <div className="relative">
+                  <div className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-white/80">
+                    <LockIcon size={20} strokeWidth={2.5} />
+                  </div>
+                  <input
+                    type="password"
+                    placeholder="Confirm New Password"
+                    minLength={8}
+                    maxLength={32}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="glass-card-subtle w-full rounded-xl border border-white/15 bg-transparent pl-12 pr-4 py-3 text-white placeholder:text-white/60 transition-colors focus:border-primary/50 focus:outline-none"
+                  />
+                </div>
+              ) : null}
             </div>
 
             {error ? (
@@ -201,9 +261,20 @@ export function AuthModal({
               <div className="text-center">
                 <button
                   type="button"
+                  onClick={() => handleTabChange("forgot")}
                   className="text-sm text-gray-400 transition-colors hover:text-primary"
                 >
                   Forgot your password?
+                </button>
+              </div>
+            ) : mode === "forgot" ? (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("login")}
+                  className="text-sm text-gray-400 transition-colors hover:text-primary"
+                >
+                  Remembered your password? Log in
                 </button>
               </div>
             ) : null}
@@ -214,7 +285,13 @@ export function AuthModal({
                 disabled={isSubmitting}
                 className="flex-1 rounded-xl bg-primary/90 py-3 px-6 font-medium text-white shadow-lg transition-all duration-200 hover:bg-primary hover:shadow-primary/20 disabled:opacity-60"
               >
-                {isSubmitting ? "Please wait…" : mode === "login" ? "Login" : "Sign up"}
+                {isSubmitting
+                  ? "Please wait…"
+                  : mode === "login"
+                  ? "Login"
+                  : mode === "register"
+                  ? "Sign up"
+                  : "Reset Password"}
               </button>
               <button
                 type="button"

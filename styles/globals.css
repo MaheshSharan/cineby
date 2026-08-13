@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --background: 214 30% 3%;
+    --foreground: 220 22% 95%;
+    --card: 215 28% 5%;
+    --card-foreground: 220 22% 95%;
+    --popover: 215 28% 6%;
+    --popover-foreground: 220 22% 95%;
+    --primary: 0 72% 51%;
+    --primary-foreground: 220 25% 10%;
+    --secondary: 215 30% 8%;
+    --secondary-foreground: 220 22% 95%;
+    --muted: 215 25% 12%;
+    --muted-foreground: 218 13% 60%;
+    --accent: 0 72% 51%;
+    --accent-foreground: 220 25% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 216 24% 15%;
+    --input: 216 24% 15%;
+    --ring: 0 72% 51%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hidden {
+    scrollbar-width: none;
+  }
+
+  .layout-container {
+    max-width: 1390px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .glass-card {
+    background: rgba(11, 15, 20, 0.5);
+    border: 1px solid rgba(238, 241, 246, 0.08);
+    backdrop-filter: blur(18px);
+  }
+
+  .glass-card-subtle {
+    background: rgba(24, 24, 24, 0.55);
+    backdrop-filter: blur(14px);
+  }
+
+  .glass-card-dark {
+    background: rgba(5, 7, 10, 0.85);
+    backdrop-filter: blur(20px);
+  }
+
+  .text-shadow-hero {
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+  }
+
+  .heading-trail {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .heading-trail::before {
+    content: "";
+    width: 3px;
+    height: 20px;
+    background: var(--primary);
+    flex-shrink: 0;
+  }
+}

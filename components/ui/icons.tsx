@@ -1,0 +1,266 @@
+interface IconProps {
+  className?: string;
+  size?: number;
+  strokeWidth?: number;
+}
+
+function Icon({
+  className,
+  size = 24,
+  strokeWidth = 2,
+  children,
+}: IconProps & { children: React.ReactNode }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+
+export function HomeIcon({ className, size = 16 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.8}>
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </Icon>
+  );
+}
+
+export function CodeIcon({ className, size = 16 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </Icon>
+  );
+}
+
+export function Grid2x2Icon({ className, size = 16 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.8}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M3 12h18" />
+      <path d="M12 3v18" />
+    </Icon>
+  );
+}
+
+export function ChevronDownIcon({ className, size = 14 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <path d="m6 9 6 6 6-6" />
+    </Icon>
+  );
+}
+
+export function SearchIcon({ className, size = 24 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </Icon>
+  );
+}
+
+export function UserRoundIcon({ className, size = 22 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <circle cx="12" cy="8" r="5" />
+      <path d="M20 21a8 8 0 0 0-16 0" />
+    </Icon>
+  );
+}
+
+export function ClapperboardIcon({ className, size = 20 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z" />
+      <path d="m6.2 5.3 3.1 3.9" />
+      <path d="m12.4 3.4 3.1 4" />
+      <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+    </Icon>
+  );
+}
+
+export function TvIcon({ className, size = 20 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+      <polyline points="17 2 12 7 7 2" />
+    </Icon>
+  );
+}
+
+export function FanIcon({ className, size = 20 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z" />
+      <path d="M12 12v.01" />
+    </Icon>
+  );
+}
+
+export function AntennaIcon({ className, size = 20 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <path d="M2 12 7 2" />
+      <path d="m7 12 5-10" />
+      <path d="m12 12 5-10" />
+      <path d="m17 12 5-10" />
+      <path d="M4.5 7h15" />
+      <path d="M12 16v6" />
+    </Icon>
+  );
+}
+
+export function ProjectorIcon({ className, size = 20 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <path d="M5 7 3 5" />
+      <path d="M9 6V3" />
+      <path d="m13 7 2-2" />
+      <circle cx="9" cy="13" r="3" />
+      <path d="M11.83 12H20a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h2.17" />
+      <path d="M16 16h2" />
+    </Icon>
+  );
+}
+
+export function PartyPopperIcon({ className, size = 20 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <path d="M5.8 11.3 2 22l10.7-3.79" />
+      <path d="M4 3h.01" />
+      <path d="M22 8h.01" />
+      <path d="M15 2h.01" />
+      <path d="M22 20h.01" />
+      <path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12v0c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10" />
+      <path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11v0c-.11.7-.72 1.22-1.43 1.22H17" />
+      <path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98v0C9.52 4.9 9 5.52 9 6.23V7" />
+      <path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z" />
+    </Icon>
+  );
+}
+
+export function GalleryVerticalEndIcon({ className, size = 18 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <path d="M7 2h10" />
+      <path d="M5 6h14" />
+      <rect width="18" height="12" x="3" y="10" rx="2" />
+    </Icon>
+  );
+}
+
+export function HeartIcon({ className, size = 18 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </Icon>
+  );
+}
+
+export function SlidersHorizontalIcon({ className, size = 14 }: IconProps) {
+  return (
+    <Icon className={className} size={size} strokeWidth={1.6}>
+      <line x1="21" x2="14" y1="4" y2="4" />
+      <line x1="10" x2="3" y1="4" y2="4" />
+      <line x1="21" x2="12" y1="12" y2="12" />
+      <line x1="8" x2="3" y1="12" y2="12" />
+      <line x1="21" x2="16" y1="20" y2="20" />
+      <line x1="12" x2="3" y1="20" y2="20" />
+      <line x1="14" x2="14" y1="2" y2="6" />
+      <line x1="8" x2="8" y1="10" y2="14" />
+      <line x1="16" x2="16" y1="18" y2="22" />
+    </Icon>
+  );
+}
+
+export function CalendarIcon({ className, size = 14 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+      <line x1="16" x2="16" y1="2" y2="6" />
+      <line x1="8" x2="8" y1="2" y2="6" />
+      <line x1="3" x2="21" y1="10" y2="10" />
+    </Icon>
+  );
+}
+
+export function SettingsIcon({ className, size = 16 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </Icon>
+  );
+}
+
+export function UploadIcon({ className, size = 18 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" x2="12" y1="3" y2="15" />
+    </Icon>
+  );
+}
+
+export function LockIcon({ className, size = 18 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </Icon>
+  );
+}
+
+export function LogOutIcon({ className, size = 18 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" x2="9" y1="12" y2="12" />
+    </Icon>
+  );
+}
+
+export function StarIcon({ className, size = 10 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`lucide lucide-star ${className ?? ""}`}
+      aria-hidden="true"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
+export function XIcon({ className, size = 20 }: IconProps) {
+  return (
+    <Icon className={className} size={size}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </Icon>
+  );
+}

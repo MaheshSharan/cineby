@@ -31,12 +31,6 @@ const BrowsePage: NextPage<BrowsePageProps> = ({
         <title>{CATEGORY_TITLES[category] ?? "Browse"} | Cineby</title>
       </Head>
 
-      <div className="mx-auto max-w-screen-2xl px-4 pt-8 sm:px-6">
-        <h1 className="text-[32px] font-black uppercase leading-tight tracking-[0.05em]">
-          {CATEGORY_TITLES[category] ?? "Browse"}
-        </h1>
-      </div>
-
       <BrowseGrid mediaType={mediaType} genres={genres} initialItems={initialItems} />
     </>
   );

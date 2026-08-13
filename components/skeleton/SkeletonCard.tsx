@@ -11,11 +11,11 @@ const VARIANT_WIDTHS: Record<SkeletonVariant, string> = {
 
 export function SkeletonCard({ variant = "row" }: SkeletonCardProps) {
   return (
-    <div className={`block ${VARIANT_WIDTHS[variant]}`}>
-      <div className="aspect-[2/3] animate-pulse rounded-[10px] bg-secondary" />
-      <div className="mt-2 space-y-1.5">
-        <div className="h-3 w-4/5 animate-pulse rounded bg-secondary" />
-        <div className="h-2.5 w-2/5 animate-pulse rounded bg-secondary" />
+    <div className={`block ${variant === "grid" ? "w-full" : VARIANT_WIDTHS[variant]}`}>
+      <div className={`animate-pulse rounded-[10px] bg-white/10 ${variant === "grid" ? "aspect-[16/9]" : "aspect-[2/3]"}`} />
+      <div className="mt-2.5 space-y-1.5 px-0.5">
+        <div className="h-3 w-4/5 animate-pulse rounded bg-white/10" />
+        <div className="h-2.5 w-2/5 animate-pulse rounded bg-white/10" />
       </div>
     </div>
   );
@@ -23,8 +23,8 @@ export function SkeletonCard({ variant = "row" }: SkeletonCardProps) {
 
 export function SkeletonCardGrid() {
   return (
-    <div className="grid grid-cols-3 gap-4 px-4 sm:grid-cols-4 sm:px-6 md:grid-cols-5 lg:grid-cols-6">
-      {Array.from({ length: 18 }).map((_, index) => (
+    <div className="mt-4 grid grid-cols-1 gap-4 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, index) => (
         <SkeletonCard key={index} variant="grid" />
       ))}
     </div>

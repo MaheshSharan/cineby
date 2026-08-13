@@ -31,8 +31,31 @@ export function BrowseGrid({ mediaType, genres, initialItems }: BrowseGridProps)
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+
   const sentinelRef = useRef<HTMLDivElement>(null);
   const requestInFlightRef = useRef(false);
+  const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Reset state when mediaType or initialItems change (e.g. client-side routing between /browse/movie & /browse/tv)
+  useEffect(() => {
+    setFilters({ sortKey: "popular" });
+    setItems(initialItems);
+    setPage(1);
+    setTotalPages(1);
+  }, [mediaType, initialItems]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(event.target as Node)) {
+        setIsMoreOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchPage = useCallback(
     async (targetPage: number, nextFilters: Filters, append: boolean) => {
@@ -79,6 +102,7 @@ export function BrowseGrid({ mediaType, genres, initialItems }: BrowseGridProps)
   const applyFilters = useCallback(
     (nextFilters: Filters) => {
       setFilters(nextFilters);
+      setIsMoreOpen(false);
       fetchPage(1, nextFilters, false);
     },
     [fetchPage]
@@ -109,7 +133,7 @@ export function BrowseGrid({ mediaType, genres, initialItems }: BrowseGridProps)
           loadMore();
         }
       },
-      { rootMargin: "800px" }
+      { rootMargin: "400px" }
     );
 
     observer.observe(sentinel);
@@ -117,11 +141,16 @@ export function BrowseGrid({ mediaType, genres, initialItems }: BrowseGridProps)
     return () => observer.disconnect();
   }, [loadMore]);
 
+  // Main visible tabs & remaining overflow genres
+  const visibleGenres = genres.slice(0, 12);
+  const overflowGenres = genres.slice(12);
+
   return (
-    <section className="mx-auto max-w-screen-2xl py-8">
-      <div className="no-scrollbar mb-6 flex gap-2 overflow-x-auto px-4 sm:px-6">
+    <section className="mx-auto max-w-[1360px] px-4 pt-24 pb-12 md:pt-28">
+      {/* Category & Genre Navigation Bar */}
+      <div className={`no-scrollbar mb-8 flex items-center gap-6 border-b border-white/10 pb-3 ${isMoreOpen ? "overflow-visible" : "overflow-x-auto"}`}>
         {SORT_OPTIONS.map((option) => (
-          <TabChip
+          <TabOptionBtn
             key={option.key}
             label={option.label}
             isActive={filters.sortKey === option.key && filters.genreId === undefined}
@@ -129,51 +158,86 @@ export function BrowseGrid({ mediaType, genres, initialItems }: BrowseGridProps)
           />
         ))}
 
-        {genres.map((genre) => (
-          <TabChip
+        {visibleGenres.map((genre) => (
+          <TabOptionBtn
             key={genre.id}
             label={genre.name}
             isActive={filters.genreId === genre.id}
             onClick={() => applyFilters({ sortKey: "popular", genreId: genre.id })}
           />
         ))}
+
+        {overflowGenres.length > 0 ? (
+          <div className="relative shrink-0" ref={moreDropdownRef}>
+            <button
+              type="button"
+              aria-label="More genres"
+              onClick={() => setIsMoreOpen((prev) => !prev)}
+              className="relative pb-1 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors duration-200"
+            >
+              ···
+            </button>
+
+            {isMoreOpen ? (
+              <div className="absolute right-0 top-full mt-2 z-[9999] min-w-[12rem] rounded-xl shadow-2xl glass-card-dark backdrop-blur-xl border border-white/10 p-1.5 flex flex-col max-h-60 overflow-y-auto no-scrollbar">
+                {overflowGenres.map((genre) => (
+                  <button
+                    key={genre.id}
+                    type="button"
+                    onClick={() => applyFilters({ sortKey: "popular", genreId: genre.id })}
+                    className={`w-full px-3 py-2 text-left text-[13px] rounded-lg transition-colors ${
+                      filters.genreId === genre.id ? "text-primary font-semibold bg-white/[0.04]" : "text-text-hi hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {genre.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
+      {/* Grid of Movie/TV Cards */}
       {items.length === 0 && !isLoading ? (
-        <p className="px-4 text-sm text-muted-foreground sm:px-6">No results found.</p>
+        <p className="py-12 text-center text-sm text-text-mid">No results found.</p>
       ) : (
-        <div className="grid grid-cols-3 gap-4 px-4 sm:grid-cols-4 sm:px-6 md:grid-cols-5 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4">
           {items.map((item) => (
-            <MovieCard key={`${item.mediaType}-${item.id}`} media={item} variant="grid" />
+            <MovieCard key={`${item.mediaType}-${item.id}`} media={item} variant="backdrop" className="w-full" />
           ))}
         </div>
       )}
 
+      {/* Loading Skeleton */}
       {isLoading ? <SkeletonCardGrid /> : null}
 
-      <div ref={sentinelRef} aria-hidden="true" />
+      <div ref={sentinelRef} aria-hidden="true" className="h-10" />
     </section>
   );
 }
 
-interface TabChipProps {
+interface TabOptionBtnProps {
   label: string;
   isActive: boolean;
   onClick: () => void;
 }
 
-function TabChip({ label, isActive, onClick }: TabChipProps) {
+function TabOptionBtn({ label, isActive, onClick }: TabOptionBtnProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`h-9 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors duration-150 ${
-        isActive
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+      className={`relative shrink-0 pb-1 text-sm font-medium transition-colors duration-200 ${
+        isActive ? "text-white" : "text-gray-400 hover:text-gray-200"
       }`}
     >
       {label}
+      <span
+        className={`absolute inset-x-0 -bottom-[13px] h-0.5 rounded-full bg-primary transition-all duration-200 ${
+          isActive ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0"
+        }`}
+      />
     </button>
   );
 }

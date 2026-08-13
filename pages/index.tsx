@@ -53,7 +53,7 @@ const Home: NextPage<HomePageProps> = ({
 
       <HeroCarousel items={heroItems} genreNames={genreNames} />
 
-      <div className="mx-auto max-w-screen-2xl">
+      <div className="mx-auto flex max-w-[1360px] flex-col gap-12 px-4 mt-10 md:mt-14 md:gap-16">
         <TopTenRow items={topTenItems} />
 
         <TabbedContentRow

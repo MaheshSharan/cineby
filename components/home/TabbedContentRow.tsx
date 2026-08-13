@@ -26,7 +26,9 @@ export function TabbedContentRow({ title, movies, series }: TabbedContentRowProp
       renderItems={(activeKey) => {
         const items = activeKey === "series" ? series : movies;
 
-        return items.map((item) => <MovieCard key={item.id} media={item} />);
+        return items.map((item) => (
+          <MovieCard key={item.id} media={item} variant="backdrop" />
+        ));
       }}
     />
   );

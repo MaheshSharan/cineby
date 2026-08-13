@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ReactNode } from "react";
+import { useCallback, useRef, useState, useEffect, type ReactNode } from "react";
 
 interface ContentRowProps {
   title?: string;
@@ -9,6 +9,31 @@ interface ContentRowProps {
 
 export function ContentRow({ title, action, children, className = "" }: ContentRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScrollState = useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = scroller;
+    setCanScrollLeft(scrollLeft > 5);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 5);
+  }, []);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    checkScrollState();
+    scroller.addEventListener("scroll", checkScrollState);
+    window.addEventListener("resize", checkScrollState);
+
+    return () => {
+      scroller.removeEventListener("scroll", checkScrollState);
+      window.removeEventListener("resize", checkScrollState);
+    };
+  }, [checkScrollState, children]);
 
   const scrollByPage = useCallback((direction: "left" | "right") => {
     const scroller = scrollerRef.current;
@@ -17,71 +42,59 @@ export function ContentRow({ title, action, children, className = "" }: ContentR
       return;
     }
 
-    const pageSize = scroller.clientWidth * 0.8;
+    const pageSize = scroller.clientWidth * 0.75;
     scroller.scrollBy({ left: direction === "left" ? -pageSize : pageSize, behavior: "smooth" });
   }, []);
 
   return (
-    <section className={`group/row py-6 ${className}`}>
-      {title ? (
-        <div className="mb-3 flex items-end justify-between gap-4 px-4 sm:px-6">
-          <h2 className="text-[24px] font-semibold uppercase leading-none tracking-[0.05em]">
-            {title}
-          </h2>
-          <div className="flex items-center gap-2">
-            {action}
-            <div className="hidden items-center gap-2 sm:flex">
-              <RowArrowButton
-                label={`Scroll ${title} left`}
-                direction="left"
-                onClick={() => scrollByPage("left")}
-              />
-              <RowArrowButton
-                label={`Scroll ${title} right`}
-                direction="right"
-                onClick={() => scrollByPage("right")}
-              />
-            </div>
-          </div>
+    <section className={`group/row relative ${className}`}>
+      {title || action ? (
+        <div className="mb-5 flex items-center justify-between gap-4">
+          {title ? (
+            <h2 className="heading-trail min-w-0 truncate text-xl font-semibold text-text-hi md:text-2xl">
+              {title}
+            </h2>
+          ) : (
+            <div />
+          )}
+          {action ? <div className="flex-shrink-0">{action}</div> : null}
         </div>
       ) : null}
 
-      <div
-        ref={scrollerRef}
-        className="no-scrollbar flex snap-x gap-4 overflow-x-auto scroll-smooth px-4 pb-2 sm:px-6"
-      >
-        {children}
+      <div className="relative w-full">
+        {canScrollLeft ? (
+          <button
+            type="button"
+            aria-label="Scroll left"
+            onClick={() => scrollByPage("left")}
+            className="absolute left-0 top-0 bottom-2 z-20 flex w-12 items-center justify-start bg-gradient-to-r from-[#05070a] via-[#05070a]/70 to-transparent text-white/70 opacity-0 transition-all duration-300 hover:text-white group-hover/row:opacity-100"
+          >
+            <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        ) : null}
+
+        <div
+          ref={scrollerRef}
+          className="no-scrollbar flex snap-x gap-2 overflow-x-auto scroll-smooth pb-2"
+        >
+          {children}
+        </div>
+
+        {canScrollRight ? (
+          <button
+            type="button"
+            aria-label="Scroll right"
+            onClick={() => scrollByPage("right")}
+            className="absolute right-0 top-0 bottom-2 z-20 flex w-12 items-center justify-end bg-gradient-to-l from-[#05070a] via-[#05070a]/70 to-transparent pr-2 text-white/70 opacity-0 transition-all duration-300 hover:text-white group-hover/row:opacity-100"
+          >
+            <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        ) : null}
       </div>
     </section>
-  );
-}
-
-interface RowArrowButtonProps {
-  label: string;
-  direction: "left" | "right";
-  onClick: () => void;
-}
-
-function RowArrowButton({ label, direction, onClick }: RowArrowButtonProps) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-foreground transition-colors duration-150 hover:bg-secondary"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        className={`h-4 w-4 ${direction === "left" ? "rotate-180" : ""}`}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="m9 18 6-6-6-6" />
-      </svg>
-    </button>
   );
 }

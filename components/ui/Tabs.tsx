@@ -12,7 +12,7 @@ interface TabsProps {
 
 export function Tabs({ options, activeKey, onChange, className = "" }: TabsProps) {
   return (
-    <div role="tablist" aria-label="Content type" className={`flex items-center gap-4 ${className}`}>
+    <div role="tablist" aria-label="Content type" className={`flex items-center gap-6 ${className}`}>
       {options.map((option) => {
         const isActive = option.key === activeKey;
 
@@ -23,14 +23,14 @@ export function Tabs({ options, activeKey, onChange, className = "" }: TabsProps
             aria-selected={isActive}
             type="button"
             onClick={() => onChange(option.key)}
-            className={`relative pb-1 text-sm font-medium uppercase transition-colors duration-150 ${
-              isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80"
+            className={`relative pb-1.5 text-sm font-medium transition-colors duration-200 ${
+              isActive ? "text-white" : "text-gray-400 hover:text-gray-200"
             }`}
           >
             {option.label}
             <span
-              className={`absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary transition-opacity duration-150 ${
-                isActive ? "opacity-100" : "opacity-0"
+              className={`absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary transition-all duration-200 ${
+                isActive ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0"
               }`}
             />
           </button>

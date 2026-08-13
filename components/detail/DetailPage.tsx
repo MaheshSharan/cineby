@@ -43,7 +43,7 @@ const TRAILER_GRADIENT_LEFT_RIGHT =
 
 export function DetailPage({ details, isPlaying }: DetailPageProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const [isMuted, setIsMuted] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
@@ -111,7 +111,7 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
 
   const handleWatchlist = async () => {
     if (!user) {
-      await router.push(`/login?next=${encodeURIComponent(router.asPath)}`);
+      openAuthModal("login");
       return;
     }
 

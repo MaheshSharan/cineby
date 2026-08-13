@@ -1,30 +1,30 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
 
-import { useAuth } from "@/components/auth/AuthProvider";
 import { LockIcon, UserRoundIcon, XIcon } from "@/components/ui/icons";
 
 export type AuthMode = "login" | "register";
 
 interface AuthModalProps {
   open: boolean;
-  mode?: AuthMode;
-  onClose: () => void;
+  mode: AuthMode;
+  onClose: (mode: AuthMode) => void;
+  onModeChange: (mode: AuthMode) => void;
+  onAuthenticated: (username: string, mode: AuthMode) => Promise<void>;
+  showToast: (msg: string) => void;
 }
 
-export function AuthModal({ open, mode: initialMode = "login", onClose }: AuthModalProps) {
-  const router = useRouter();
-  const { refresh, showToast } = useAuth();
-
-  const [mode, setMode] = useState<AuthMode>(initialMode);
+export function AuthModal({
+  open,
+  mode,
+  onClose,
+  onModeChange,
+  onAuthenticated,
+  showToast,
+}: AuthModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMode(initialMode);
-  }, [initialMode]);
 
   useEffect(() => {
     if (!open) {
@@ -49,14 +49,14 @@ export function AuthModal({ open, mode: initialMode = "login", onClose }: AuthMo
   }, [open]);
 
   const handleClose = () => {
-    onClose();
+    onClose(mode);
     if (window.location.pathname === "/login" || window.location.pathname === "/register") {
       window.history.pushState(null, "", "/");
     }
   };
 
   const handleTabChange = (newMode: AuthMode) => {
-    setMode(newMode);
+    onModeChange(newMode);
     setError(null);
     const newPath = newMode === "login" ? "/login" : "/register";
     if (window.location.pathname !== newPath) {
@@ -85,12 +85,8 @@ export function AuthModal({ open, mode: initialMode = "login", onClose }: AuthMo
         return;
       }
 
-      await refresh();
-      if (mode === "login") {
-        showToast(`${username}, Welcome back!`);
-      } else {
-        showToast("Registered Successfully");
-      }
+      await onAuthenticated(username, mode);
+      showToast(mode === "login" ? `${username}, Welcome back!` : "Registered Successfully");
       handleClose();
     } catch {
       setError("Something went wrong. Please try again.");

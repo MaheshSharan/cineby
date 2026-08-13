@@ -1,6 +1,7 @@
 import type { MediaType } from "@/lib/tmdb";
+import type { WatchlistItem } from "@/lib/db/types";
 
-export interface WatchlistItem {
+export interface WatchlistInput {
   mediaType: MediaType;
   mediaId: number;
   title: string;
@@ -10,6 +11,22 @@ export interface WatchlistItem {
 
 interface WatchlistCheckResponse {
   inWatchlist: boolean;
+}
+
+interface WatchlistListResponse {
+  items: WatchlistItem[];
+}
+
+export async function listWatchlist(): Promise<WatchlistItem[]> {
+  const response = await fetch("/api/watchlist");
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const data = (await response.json()) as WatchlistListResponse;
+
+  return Array.isArray(data.items) ? data.items : [];
 }
 
 export async function checkWatchlist(
@@ -28,7 +45,7 @@ export async function checkWatchlist(
 }
 
 export async function addToWatchlist(
-  item: WatchlistItem
+  item: WatchlistInput
 ): Promise<boolean> {
   const response = await fetch("/api/watchlist", {
     method: "POST",

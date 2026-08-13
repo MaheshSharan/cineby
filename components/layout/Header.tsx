@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { AuthModal, type AuthMode } from "@/components/auth/AuthModal";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AccountDrawer } from "@/components/layout/AccountDrawer";
 import { BrowsePopup } from "@/components/layout/BrowsePopup";
@@ -10,42 +8,19 @@ import { SearchModal } from "@/components/search/SearchModal";
 import { CodeIcon, HomeIcon, SearchIcon, UserRoundIcon } from "@/components/ui/icons";
 
 export function Header() {
-  const router = useRouter();
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
-
-  useEffect(() => {
-    if (router.pathname === "/login") {
-      setIsAuthModalOpen(true);
-      setAuthMode("login");
-    } else if (router.pathname === "/register") {
-      setIsAuthModalOpen(true);
-      setAuthMode("register");
-    } else {
-      setIsAuthModalOpen(false);
-    }
-  }, [router.pathname]);
 
   const handleUserClick = () => {
     if (user) {
       setIsAccountOpen(true);
     } else {
-      setIsAuthModalOpen(true);
-      setAuthMode("login");
+      openAuthModal("login");
       if (window.location.pathname !== "/login") {
         window.history.pushState(null, "", "/login");
       }
-    }
-  };
-
-  const handleAuthModalClose = () => {
-    setIsAuthModalOpen(false);
-    if (window.location.pathname === "/login" || window.location.pathname === "/register") {
-      window.history.pushState(null, "", "/");
     }
   };
 
@@ -117,7 +92,6 @@ export function Header() {
 
       <SearchModal open={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
       <AccountDrawer open={isAccountOpen} onClose={() => setIsAccountOpen(false)} />
-      <AuthModal open={isAuthModalOpen} mode={authMode} onClose={handleAuthModalClose} />
     </>
   );
 }

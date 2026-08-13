@@ -28,7 +28,7 @@ const BrowsePage: NextPage<BrowsePageProps> = ({
   return (
     <>
       <Head>
-        <title>{CATEGORY_TITLES[category] ?? "Browse"} | Cineby</title>
+        <title>{`${CATEGORY_TITLES[category] ?? "Browse"} | Cineby`}</title>
       </Head>
 
       <BrowseGrid mediaType={mediaType} genres={genres} initialItems={initialItems} />

@@ -15,7 +15,7 @@ const WatchPage: NextPage<WatchPageProps> = ({ title, subtitle, media }) => {
   return (
     <>
       <Head>
-        <title>Watch {title} | Cineby</title>
+        <title>{`Watch ${title} | Cineby`}</title>
       </Head>
       <PlayerShell title={title} subtitle={subtitle} media={media} />
     </>

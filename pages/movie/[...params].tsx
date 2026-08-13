@@ -15,7 +15,7 @@ const MoviePage: NextPage<MoviePageProps> = ({ details, isPlaying }) => {
   return (
     <>
       <Head>
-        <title>{details.title} | Cineby</title>
+        <title>{`${details.title} | Cineby`}</title>
         <meta name="description" content={details.overview} />
       </Head>
       <DetailPage details={details} isPlaying={isPlaying} />

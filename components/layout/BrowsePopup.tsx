@@ -77,92 +77,97 @@ export function BrowsePopup() {
         <div
           role="dialog"
           aria-label="Browse menu"
-          className="browse-popup-content absolute left-0 top-full z-50 mt-2 overflow-hidden"
+          className="absolute top-full right-0 z-50 mt-2 pointer-events-none"
         >
-          <div className="w-[320px] rounded-[20px] border border-white/10 bg-[#05070a]/85 shadow-[0_24px_56px_-24px_rgba(0,0,0,0.7),0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-[20px]">
-            <div className="flex items-center justify-between px-5 pb-2 pt-5">
-              <span className="text-sm font-semibold text-text-hi">Browse</span>
-              <button
-                type="button"
-                aria-label="Close browse menu"
-                onClick={() => setIsOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-text-mid transition-colors duration-150 hover:bg-white/10 hover:text-white"
-              >
-                <XIcon size={18} />
-              </button>
+          <div className="browse-popup-content pointer-events-auto w-[320px] overflow-hidden rounded-[20px] border border-white/10 bg-[#05070a]/85 shadow-[0_24px_56px_-24px_rgba(0,0,0,0.7),0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-[20px] select-none">
+            <div className="flex items-center justify-center p-3">
+              <h3 className="text-sm font-semibold text-text-hi tracking-[-0.01em]">Browse</h3>
             </div>
 
-            <div className="px-5 pb-2 pt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-text-mid">
-              Content
-            </div>
-            <div className="px-4">
-              <div className="mb-2 grid grid-cols-3 gap-1.5">
-                {CONTENT_LINKS.map(({ label, href, Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setIsOpen(false)}
-                    className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-white/10 py-3 px-2 text-white transition-all duration-200 hover:border-primary/40 hover:bg-white/[0.06]"
-                  >
-                    <Icon size={20} className="text-primary" />
-                    <span className="text-[9px] font-medium text-white">{label}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="px-5 pt-2 text-[10px] font-medium uppercase tracking-[0.08em] text-text-mid">
-              Features
-            </div>
-            <div className="px-4">
-              <div className="mb-3 grid grid-cols-3 gap-1.5">
-                {FEATURE_LINKS.map(({ label, Icon }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-white/10 py-3 px-2 text-white transition-all duration-200 hover:border-primary/40 hover:bg-white/[0.06]"
-                  >
-                    <Icon size={20} className="text-primary" />
-                    <span className="text-[9px] font-medium text-white">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-white/10 px-4 pb-4 pt-3">
-              <div className="flex items-center justify-between">
-                <button type="button" className="flex items-center gap-3 text-white">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-text-mid">
-                    <GalleryVerticalEndIcon size={18} />
-                  </span>
-                  <span className="text-sm text-white">History</span>
-                </button>
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                <button type="button" className="flex items-center gap-3 text-white">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-text-mid">
-                    <HeartIcon size={18} />
-                  </span>
-                  <span className="text-sm text-white">Watchlist</span>
-                </button>
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-text-mid">
-                    <SlidersHorizontalIcon size={16} />
-                  </span>
-                  <span className="text-sm text-white">Ads</span>
+            <div className="p-2.5 space-y-2.5">
+              <section className="space-y-1">
+                <h4 className="px-1 mb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-text-mid">
+                  Content
+                </h4>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {CONTENT_LINKS.map(({ label, href, Icon }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setIsOpen(false)}
+                      className="group flex flex-col items-center rounded-lg p-2 transition-all duration-200 hover:bg-white/10"
+                    >
+                      <div className="glass-card-subtle mb-1 rounded-lg border border-primary/20 p-2 transition-all duration-200 group-hover:border-primary/40">
+                        <Icon size={20} className="text-primary" />
+                      </div>
+                      <span className="text-[9px] font-medium text-white">{label}</span>
+                    </Link>
+                  ))}
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={false}
-                  aria-label="Toggle ads"
-                  className="relative h-6 w-10 rounded-full bg-white/10 transition-colors duration-200"
-                >
-                  <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-text-hi transition-transform duration-200" />
-                </button>
-              </div>
+              </section>
+
+              <section className="space-y-1">
+                <h4 className="px-1 mb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-text-mid">
+                  Features
+                </h4>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <Link
+                    href="/livestream"
+                    onClick={() => setIsOpen(false)}
+                    className="group flex flex-col items-center rounded-lg p-2 transition-all duration-200 hover:bg-white/10"
+                  >
+                    <div className="glass-card-subtle mb-1 rounded-lg border border-blue-400/20 p-2 transition-all duration-200 group-hover:border-blue-400/40">
+                      <AntennaIcon size={20} className="text-blue-400" />
+                    </div>
+                    <span className="text-[9px] font-medium text-white">Channels</span>
+                  </Link>
+
+                  <Link
+                    href="/4k"
+                    onClick={() => setIsOpen(false)}
+                    className="group flex flex-col items-center rounded-lg p-2 transition-all duration-200 hover:bg-white/10"
+                  >
+                    <div className="glass-card-subtle mb-1 rounded-lg border border-purple-400/20 p-2 transition-all duration-200 group-hover:border-purple-400/40">
+                      <ProjectorIcon size={20} className="text-purple-400" />
+                    </div>
+                    <span className="text-[9px] font-medium text-white">4K</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    className="group flex flex-col items-center rounded-lg p-2 transition-all duration-200 hover:bg-white/10"
+                  >
+                    <div className="glass-card-subtle mb-1 rounded-lg border border-yellow-400/20 p-2 transition-all duration-200 group-hover:border-yellow-400/40">
+                      <PartyPopperIcon size={20} className="text-yellow-400" />
+                    </div>
+                    <span className="truncate text-[9px] font-medium text-white">Watch Party</span>
+                  </button>
+                </div>
+              </section>
+
+              <section className="space-y-1">
+                <h4 className="px-1 mb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-text-mid">
+                  Personal
+                </h4>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <Link
+                    href="/history"
+                    onClick={() => setIsOpen(false)}
+                    className="glass-card-subtle flex h-20 w-full flex-col items-center justify-center rounded-lg border border-gray-400/20 p-1.5 text-gray-400 transition-all duration-200 hover:border-primary/20 hover:text-primary"
+                  >
+                    <GalleryVerticalEndIcon size={18} className="mb-1" />
+                    <span className="text-xs">History</span>
+                  </Link>
+                  <Link
+                    href="/watchlist"
+                    onClick={() => setIsOpen(false)}
+                    className="glass-card-subtle flex h-20 w-full flex-col items-center justify-center rounded-lg border border-gray-400/20 p-1.5 text-gray-400 transition-all duration-200 hover:border-primary/20 hover:text-primary"
+                  >
+                    <HeartIcon size={18} className="mb-1" />
+                    <span className="text-xs">Watchlist</span>
+                  </Link>
+                </div>
+              </section>
             </div>
           </div>
         </div>

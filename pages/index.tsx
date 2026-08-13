@@ -1,16 +1,12 @@
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 
-import type { Genre, MediaSummary } from "@/lib/tmdb";
+import type { MediaSummary } from "@/lib/tmdb";
 import {
   discoverMovies,
-  getGenres,
-  getTopRatedMovies,
-  getTopRatedTv,
   getTrending,
 } from "@/lib/tmdb/server";
 
-import { GenreBrowse } from "@/components/home/GenreBrowse";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { OnlyOnRow } from "@/components/home/OnlyOnRow";
 import { TabbedContentRow } from "@/components/home/TabbedContentRow";
@@ -22,27 +18,19 @@ const TOP_TEN_ITEMS = 10;
 interface HomePageProps {
   heroItems: MediaSummary[];
   topTenItems: MediaSummary[];
+  onlyOnNetflix: MediaSummary[];
   trendingMovies: MediaSummary[];
   trendingSeries: MediaSummary[];
-  onlyOnNetflix: MediaSummary[];
-  topRatedMovies: MediaSummary[];
-  topRatedSeries: MediaSummary[];
   genreNames: Record<number, string>;
-  genreOptions: Genre[];
-  genreInitial: MediaSummary[];
 }
 
 const Home: NextPage<HomePageProps> = ({
   heroItems,
   topTenItems,
+  onlyOnNetflix,
   trendingMovies,
   trendingSeries,
-  onlyOnNetflix,
-  topRatedMovies,
-  topRatedSeries,
   genreNames,
-  genreOptions,
-  genreInitial,
 }) => {
   return (
     <>
@@ -59,21 +47,13 @@ const Home: NextPage<HomePageProps> = ({
       <div className="mx-auto flex max-w-[1360px] flex-col gap-12 px-4 mt-10 md:mt-14 md:gap-16">
         <TopTenRow items={topTenItems} />
 
+        <OnlyOnRow initialItems={onlyOnNetflix} />
+
         <TabbedContentRow
           title="Trending Today"
           movies={trendingMovies}
           series={trendingSeries}
         />
-
-        <OnlyOnRow initialItems={onlyOnNetflix} />
-
-        <TabbedContentRow
-          title="Top rated"
-          movies={topRatedMovies}
-          series={topRatedSeries}
-        />
-
-        <GenreBrowse genres={genreOptions} initialItems={genreInitial} />
       </div>
     </>
   );
@@ -83,43 +63,27 @@ export const getServerSideProps: GetServerSideProps<HomePageProps> = async () =>
   const [
     hero,
     topTen,
+    onlyOnNetflix,
     trendingMovies,
     trendingSeries,
-    onlyOnNetflix,
-    topRatedMovies,
-    topRatedSeries,
-    movieGenres,
-    genreInitial,
   ] = await Promise.all([
     getTrending("all", "day"),
     getTrending("all", "week"),
+    discoverMovies({ providerId: 8, watchRegion: "IN", page: 1 }),
     getTrending("movie", "day"),
     getTrending("tv", "day"),
-    discoverMovies({ providerId: 8, watchRegion: "IN", page: 1 }),
-    getTopRatedMovies(),
-    getTopRatedTv(),
-    getGenres("movie"),
-    discoverMovies({ genreId: 28, page: 1 }),
   ]);
 
   const genreNames: Record<number, string> = {};
-
-  for (const genre of movieGenres.genres) {
-    genreNames[genre.id] = genre.name;
-  }
 
   return {
     props: {
       heroItems: hero.results.slice(0, HERO_ITEMS),
       topTenItems: topTen.results.slice(0, TOP_TEN_ITEMS),
+      onlyOnNetflix: onlyOnNetflix.results,
       trendingMovies: trendingMovies.results,
       trendingSeries: trendingSeries.results,
-      onlyOnNetflix: onlyOnNetflix.results,
-      topRatedMovies: topRatedMovies.results,
-      topRatedSeries: topRatedSeries.results,
       genreNames,
-      genreOptions: movieGenres.genres,
-      genreInitial: genreInitial.results,
     },
   };
 };

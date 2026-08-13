@@ -4,6 +4,7 @@ import Head from "next/head";
 import type { MediaSummary } from "@/lib/tmdb";
 import {
   discoverMovies,
+  getGenres,
   getTrending,
 } from "@/lib/tmdb/server";
 
@@ -66,15 +67,25 @@ export const getServerSideProps: GetServerSideProps<HomePageProps> = async () =>
     onlyOnNetflix,
     trendingMovies,
     trendingSeries,
+    movieGenres,
+    tvGenres,
   ] = await Promise.all([
     getTrending("all", "day"),
     getTrending("all", "week"),
     discoverMovies({ providerId: 8, watchRegion: "IN", page: 1 }),
     getTrending("movie", "day"),
     getTrending("tv", "day"),
+    getGenres("movie"),
+    getGenres("tv"),
   ]);
 
   const genreNames: Record<number, string> = {};
+  for (const genre of movieGenres.genres) {
+    genreNames[genre.id] = genre.name;
+  }
+  for (const genre of tvGenres.genres) {
+    genreNames[genre.id] = genre.name;
+  }
 
   return {
     props: {

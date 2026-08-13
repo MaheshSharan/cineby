@@ -359,13 +359,13 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
                 </a>
               ) : null}
 
-              <button
-                type="button"
+              <a
+                href="#recommendations-section"
                 className="flex h-10 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 text-[12px] font-medium text-white backdrop-blur-xl transition-all duration-200 hover:bg-white/20 md:px-4 md:text-[13px]"
               >
                 <SparklesIcon size={16} />
                 <span className="truncate">Similars</span>
-              </button>
+              </a>
             </div>
           </div>
         </div>
@@ -382,7 +382,7 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
         <div className="mt-14">
           <CastRow cast={details.cast} />
         </div>
-        <div className="mt-14">
+        <div id="recommendations-section" className="mt-14 scroll-mt-24">
           <RecommendationsRow
             title="You may like"
             items={

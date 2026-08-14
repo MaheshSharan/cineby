@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import type { HistoryEntry } from "@/lib/db/types";
 import { clearAllHistory, listHistory, removeFromHistory } from "@/lib/api/history";
 import { addToWatchlist } from "@/lib/api/watchlist";
-import { getMediaHref, getPlayHref } from "@/lib/utils/media";
+import { getPlayHref } from "@/lib/utils/media";
 import { getPosterResponsiveUrls } from "@/lib/tmdb/image";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { BookmarkIcon, TrashIcon, XIcon } from "@/components/ui/icons";
@@ -208,7 +208,6 @@ interface HistoryCardProps {
 function HistoryCard({ entry, onRemove, onAddToWatchlist }: HistoryCardProps) {
   const poster = getPosterResponsiveUrls(entry.posterPath);
   const playHref = getPlayHref(entry.mediaType, entry.mediaId);
-  const detailHref = getMediaHref(entry.mediaType, entry.mediaId);
 
   const subtitle =
     entry.mediaType === "tv"

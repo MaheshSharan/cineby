@@ -8,6 +8,7 @@ import {
   getTrending,
 } from "@/lib/tmdb/server";
 
+import { ContinueWatchingRow } from "@/components/home/ContinueWatchingRow";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { OnlyOnRow } from "@/components/home/OnlyOnRow";
 import { TabbedContentRow } from "@/components/home/TabbedContentRow";
@@ -46,6 +47,8 @@ const Home: NextPage<HomePageProps> = ({
       <HeroCarousel items={heroItems} genreNames={genreNames} />
 
       <div className="mx-auto flex max-w-[1360px] flex-col gap-12 px-4 mt-10 md:mt-14 md:gap-16">
+        <ContinueWatchingRow />
+
         <TopTenRow items={topTenItems} />
 
         <OnlyOnRow initialItems={onlyOnNetflix} />

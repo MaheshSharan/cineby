@@ -199,6 +199,7 @@ export function AccountDrawer({ open, onClose }: AccountDrawerProps) {
               <div className="group relative mb-6">
                 <div className="relative">
                   <div className="glass-card-subtle h-24 w-24 rounded-full border border-primary/30 p-1 shadow-lg shadow-primary/10 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={avatarSrc}
                       alt={username}

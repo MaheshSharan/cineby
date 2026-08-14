@@ -1,4 +1,4 @@
-import { getTmdbImageBaseUrl } from "@/lib/env";
+import { getImageProxyUrl, getTmdbImageBaseUrl, isImageProxyEnabled } from "@/lib/env";
 
 export function buildImageUrl(
   path: string | null | undefined,
@@ -17,21 +17,22 @@ export function buildImageUrl(
     return null;
   }
 
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const imageBaseUrl = getTmdbImageBaseUrl();
 
-  return `${imageBaseUrl}/${size}${path}`;
+  return `${imageBaseUrl}/${size}${cleanPath}`;
 }
 
 export function getLogoUrl(path: string | null | undefined): string | null {
   const tmdbUrl = buildImageUrl(path, "w500");
 
-  return tmdbUrl ? buildWsrvUrl(tmdbUrl, 50) : null;
+  return tmdbUrl ? optimizeImageUrl(tmdbUrl, 50) : null;
 }
 
 export function getHeroBackdropUrl(path: string | null | undefined): string | null {
   const tmdbUrl = buildImageUrl(path, "original");
 
-  return tmdbUrl ? buildWsrvUrl(tmdbUrl, 80) : null;
+  return tmdbUrl ? optimizeImageUrl(tmdbUrl, 80) : null;
 }
 
 export function getProfileUrl(path: string | null | undefined): string | null {
@@ -41,11 +42,16 @@ export function getProfileUrl(path: string | null | undefined): string | null {
 export function getStillThumbUrl(path: string | null | undefined): string | null {
   const tmdbUrl = buildImageUrl(path, "w300");
 
-  return tmdbUrl ? buildWsrvUrl(tmdbUrl, 50) : null;
+  return tmdbUrl ? optimizeImageUrl(tmdbUrl, 50) : null;
 }
 
-function buildWsrvUrl(tmdbUrl: string, quality: number): string {
-  return `https://wsrv.nl/?url=${encodeURIComponent(tmdbUrl)}&output=webp&q=${quality}&n=-1`;
+function optimizeImageUrl(rawUrl: string, quality: number): string {
+  if (!isImageProxyEnabled()) {
+    return rawUrl;
+  }
+
+  const proxyBase = getImageProxyUrl();
+  return `${proxyBase}/?url=${encodeURIComponent(rawUrl)}&output=webp&q=${quality}&n=-1`;
 }
 
 export interface PosterResponsiveUrls {
@@ -60,8 +66,8 @@ export function getPosterResponsiveUrls(
   const desktopTmdb = buildImageUrl(path, "w780");
 
   return {
-    mobile: mobileTmdb ? buildWsrvUrl(mobileTmdb, 50) : null,
-    desktop: desktopTmdb ? buildWsrvUrl(desktopTmdb, 65) : null,
+    mobile: mobileTmdb ? optimizeImageUrl(mobileTmdb, 50) : null,
+    desktop: desktopTmdb ? optimizeImageUrl(desktopTmdb, 65) : null,
   };
 }
 
@@ -77,7 +83,7 @@ export function getBackdropResponsiveUrls(
   const desktopTmdb = buildImageUrl(path, "original");
 
   return {
-    mobile: mobileTmdb ? buildWsrvUrl(mobileTmdb, 70) : null,
-    desktop: desktopTmdb ? buildWsrvUrl(desktopTmdb, 80) : null,
+    mobile: mobileTmdb ? optimizeImageUrl(mobileTmdb, 70) : null,
+    desktop: desktopTmdb ? optimizeImageUrl(desktopTmdb, 80) : null,
   };
 }

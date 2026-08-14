@@ -284,7 +284,11 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
         ) : null}
 
         <div className="relative z-10 flex min-h-[60vh] flex-col justify-end px-8 pb-12 pt-28 md:min-h-[75vh] md:px-16 md:pb-16 lg:min-h-[85vh] lg:px-24">
-          <div className="max-w-2xl">
+          <div
+            className="w-full max-w-2xl text-left"
+            onMouseEnter={() => setShowOverview(true)}
+            onMouseLeave={() => setShowOverview(false)}
+          >
             {details.logoPath ? (
               <div className="mb-4 max-w-[280px] sm:max-w-[340px] md:max-w-[420px]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -301,46 +305,42 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
             )}
 
             <div
-              className={`mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-text-hi transition-all duration-300 md:gap-3 md:text-sm ${
-                hasEntered ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+              className={`mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 overflow-hidden text-[13px] text-white/85 transition-all duration-500 ease-out ${
+                hasEntered ? "max-h-[64px] opacity-100" : "max-h-0 opacity-0"
               }`}
+              style={{ textShadow: "rgba(0,0,0,0.65) 0px 1px 4px" }}
             >
               {details.voteAverage > 0 ? (
-                <DetailMetaItem
-                  value={details.voteAverage.toFixed(1)}
-                  isNumeric
-                />
+                <span className="inline-flex items-center gap-1.5 text-accent-hi">
+                  <StarIcon size={13} className="fill-primary text-primary" />
+                  <span className="tabular-nums font-medium">
+                    {details.voteAverage.toFixed(0)}
+                  </span>
+                </span>
               ) : null}
               {details.releaseDate ? (
-                <DetailMetaItem
-                  value={getYear(details.releaseDate)}
-                  isNumeric
-                />
+                <DetailMetaItem value={getYear(details.releaseDate)} />
               ) : null}
-              {"certification" in details && details.certification ? (
-                <DetailMetaItem value={details.certification} />
-              ) : null}
-              {"runtime" in details && formatRuntime(details.runtime) ? (
-                <DetailMetaItem value={formatRuntime(details.runtime) ?? ""} />
+              {"runtime" in details && details.runtime ? (
+                <DetailMetaItem value={formatRuntime(details.runtime)} isNumeric />
               ) : null}
               {details.genres.map((genre) => (
                 <DetailMetaItem key={genre.id} value={genre.name} />
               ))}
             </div>
 
-            <div
-              className="relative my-4"
-              onMouseEnter={() => setShowOverview(true)}
-              onMouseLeave={() => setShowOverview(false)}
-            >
+            {details.overview ? (
               <p
-                className={`text-xs leading-relaxed text-text-mid transition-all duration-300 md:text-sm ${
-                  showOverview ? "line-clamp-none" : "line-clamp-3"
+                className={`max-w-xl overflow-hidden text-[14px] leading-relaxed text-white/85 transition-all duration-500 ease-out md:text-[15px] ${
+                  showOverview
+                    ? "mb-7 max-h-[140px] opacity-100 line-clamp-3"
+                    : "mb-0 max-h-0 opacity-0"
                 }`}
+                style={{ textShadow: "rgba(0,0,0,0.65) 0px 1px 4px" }}
               >
                 {details.overview}
               </p>
-            </div>
+            ) : null}
 
             <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
               <Link
@@ -445,42 +445,5 @@ function findTrailer(
     youtubeVideos.find((video) => video.type === "Trailer") ??
     youtubeVideos.find((video) => video.type === "Teaser") ??
     youtubeVideos[0]
-  );
-}
-
-function MutedIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-[18px] w-[18px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
-      <line x1="22" x2="16" y1="9" y2="15" />
-      <line x1="16" x2="22" y1="9" y2="15" />
-    </svg>
-  );
-}
-
-function VolumeIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-[18px] w-[18px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
   );
 }

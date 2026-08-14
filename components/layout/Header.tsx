@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AccountDrawer } from "@/components/layout/AccountDrawer";
 import { BrowsePopup } from "@/components/layout/BrowsePopup";
+import { Dock } from "@/components/layout/Dock";
 import { SearchModal } from "@/components/search/SearchModal";
 import { CodeIcon, HomeIcon, SearchIcon, UserRoundIcon } from "@/components/ui/icons";
 
@@ -87,6 +88,12 @@ export function Header() {
           </div>
         </div>
       </header>
+
+      {/* Mobile Dock Navigation */}
+      <Dock
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenAccount={() => setIsAccountOpen(true)}
+      />
 
       <SearchModal open={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
       <AccountDrawer open={isAccountOpen} onClose={() => setIsAccountOpen(false)} />

@@ -111,9 +111,18 @@ function ContinueWatchingCard({ entry, onRemove }: ContinueWatchingCardProps) {
             </div>
           )}
 
+          {entry.progress ? (
+            <div className="absolute bottom-0 left-0 z-[6] h-[3px] w-full bg-[#05070a]/60">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-[#ff5252] shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+                style={{ width: `${Math.min(100, Math.max(0, entry.progress))}%` }}
+              />
+            </div>
+          ) : null}
+
           {entry.duration ? (
-            <div className="absolute bottom-2 right-2 z-[2] rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm">
-              {entry.duration}
+            <div className="absolute bottom-2 right-2 z-[6] flex items-center gap-1 rounded-md border border-white/10 bg-[#05070a]/75 px-2 py-1 text-[11px] font-medium text-[#eef1f6] backdrop-blur-md">
+              <span>{entry.duration}</span>
             </div>
           ) : null}
         </div>

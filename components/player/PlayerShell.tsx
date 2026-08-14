@@ -8,6 +8,7 @@ export interface PlayerMedia {
   seasonNumber?: number | null;
   episodeNumber?: number | null;
   duration?: string | null;
+  progress?: number | null;
 }
 
 interface PlayerShellProps {
@@ -17,28 +18,42 @@ interface PlayerShellProps {
   onBack?: () => void;
 }
 
+const HISTORY_SAVE_INTERVAL_MS = 20000;
+
 export function PlayerShell({ title, subtitle, media, onBack }: PlayerShellProps) {
   useEffect(() => {
     if (!media) {
       return;
     }
 
-    // Recording history is best-effort: failures (e.g. anonymous playback)
-    // must never block the player UI.
-    fetch("/api/history", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mediaType: media.mediaType,
-        mediaId: media.mediaId,
-        title,
-        posterPath: media.posterPath ?? null,
-        backdropPath: media.backdropPath ?? null,
-        seasonNumber: media.seasonNumber ?? null,
-        episodeNumber: media.episodeNumber ?? null,
-        duration: media.duration ?? null,
-      }),
-    }).catch(() => {});
+    const saveHistory = () => {
+      // Recording history is best-effort: failures (e.g. anonymous playback)
+      // must never block the player UI.
+      fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mediaType: media.mediaType,
+          mediaId: media.mediaId,
+          title,
+          posterPath: media.posterPath ?? null,
+          backdropPath: media.backdropPath ?? null,
+          seasonNumber: media.seasonNumber ?? null,
+          episodeNumber: media.episodeNumber ?? null,
+          duration: media.duration ?? null,
+          progress: media.progress ?? null,
+        }),
+      }).catch(() => {});
+    };
+
+    // Save only after 20 seconds of continuous playback, and update every 20 seconds
+    const timer = window.setTimeout(saveHistory, HISTORY_SAVE_INTERVAL_MS);
+    const interval = window.setInterval(saveHistory, HISTORY_SAVE_INTERVAL_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(interval);
+    };
   }, [media, title]);
 
   return (

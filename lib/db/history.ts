@@ -29,24 +29,30 @@ interface HistoryRow {
 }
 
 export function addHistoryEntry(userId: number, input: HistoryInput): void {
-  getDb()
-    .prepare(
-      `INSERT INTO watch_history (user_id, media_type, media_id, title, poster_path, backdrop_path, season_number, episode_number, duration, progress, watched_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      userId,
-      input.mediaType,
-      input.mediaId,
-      input.title,
-      input.posterPath ?? null,
-      input.backdropPath ?? null,
-      input.seasonNumber ?? null,
-      input.episodeNumber ?? null,
-      input.duration ?? null,
-      input.progress ?? null,
-      new Date().toISOString()
-    );
+  const db = getDb();
+
+  // Deduplicate: remove any prior history entry for this catalog item
+  // so that only 1 latest state per movie or TV show is retained.
+  db.prepare(
+    "DELETE FROM watch_history WHERE user_id = ? AND media_type = ? AND media_id = ?"
+  ).run(userId, input.mediaType, input.mediaId);
+
+  db.prepare(
+    `INSERT INTO watch_history (user_id, media_type, media_id, title, poster_path, backdrop_path, season_number, episode_number, duration, progress, watched_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    userId,
+    input.mediaType,
+    input.mediaId,
+    input.title,
+    input.posterPath ?? null,
+    input.backdropPath ?? null,
+    input.seasonNumber ?? null,
+    input.episodeNumber ?? null,
+    input.duration ?? null,
+    input.progress ?? null,
+    new Date().toISOString()
+  );
 }
 
 export function removeFromHistory(userId: number, historyId: number): void {

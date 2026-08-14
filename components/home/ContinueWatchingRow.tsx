@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import type { HistoryEntry } from "@/lib/db/types";
 import { listHistory, removeFromHistory } from "@/lib/api/history";
-import { getPlayHref } from "@/lib/utils/media";
+import { getEpisodeHref, getPlayHref } from "@/lib/utils/media";
 import { getPosterResponsiveUrls } from "@/lib/tmdb/image";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ContentRow } from "@/components/content/ContentRow";
@@ -63,13 +63,14 @@ interface ContinueWatchingCardProps {
 
 function ContinueWatchingCard({ entry, onRemove }: ContinueWatchingCardProps) {
   const poster = getPosterResponsiveUrls(entry.posterPath);
-  const playHref = getPlayHref(entry.mediaType, entry.mediaId);
+  const playHref =
+    entry.mediaType === "tv" && entry.seasonNumber && entry.episodeNumber
+      ? getEpisodeHref(entry.mediaId, entry.seasonNumber, entry.episodeNumber)
+      : getPlayHref(entry.mediaType, entry.mediaId);
 
   const subtitle =
     entry.mediaType === "tv"
-      ? entry.seasonNumber && entry.episodeNumber
-        ? `S${entry.seasonNumber} E${entry.episodeNumber}`
-        : "TV Show"
+      ? `S:${entry.seasonNumber ?? 1} E:${entry.episodeNumber ?? 1}`
       : "Movie";
 
   return (

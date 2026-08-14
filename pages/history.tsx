@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import type { HistoryEntry } from "@/lib/db/types";
 import { clearAllHistory, listHistory, removeFromHistory } from "@/lib/api/history";
 import { addToWatchlist } from "@/lib/api/watchlist";
-import { getPlayHref } from "@/lib/utils/media";
+import { getEpisodeHref, getPlayHref } from "@/lib/utils/media";
 import { getPosterResponsiveUrls } from "@/lib/tmdb/image";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { BookmarkIcon, TrashIcon, XIcon } from "@/components/ui/icons";
@@ -207,13 +207,14 @@ interface HistoryCardProps {
 
 function HistoryCard({ entry, onRemove, onAddToWatchlist }: HistoryCardProps) {
   const poster = getPosterResponsiveUrls(entry.posterPath);
-  const playHref = getPlayHref(entry.mediaType, entry.mediaId);
+  const playHref =
+    entry.mediaType === "tv" && entry.seasonNumber && entry.episodeNumber
+      ? getEpisodeHref(entry.mediaId, entry.seasonNumber, entry.episodeNumber)
+      : getPlayHref(entry.mediaType, entry.mediaId);
 
   const subtitle =
     entry.mediaType === "tv"
-      ? entry.seasonNumber && entry.episodeNumber
-        ? `S${entry.seasonNumber} E${entry.episodeNumber}`
-        : "TV Show"
+      ? `S:${entry.seasonNumber ?? 1} E:${entry.episodeNumber ?? 1}`
       : "Movie";
 
   return (

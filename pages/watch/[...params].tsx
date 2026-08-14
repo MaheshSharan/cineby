@@ -2,6 +2,8 @@ import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 
 import { getMovieDetails, getTvDetails } from "@/lib/tmdb/server";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
+import { listHistory } from "@/lib/db/history";
 
 import { PlayerShell, type PlayerMedia } from "@/components/player/PlayerShell";
 
@@ -34,13 +36,30 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
   try {
     if (mediaType === "tv") {
       const details = await getTvDetails(id);
-      const season = parseOptionalNumber(params[2]);
-      const episode = parseOptionalNumber(params[3]);
+      let season = parseOptionalNumber(params[2]);
+      let episode = parseOptionalNumber(params[3]);
+
+      if (!season || !episode) {
+        const user = getCurrentUser(context.req);
+        if (user) {
+          const historyList = listHistory(user.id);
+          const match = historyList.find(
+            (item) => item.mediaType === "tv" && item.mediaId === details.id
+          );
+          if (match?.seasonNumber && match?.episodeNumber) {
+            season = match.seasonNumber;
+            episode = match.episodeNumber;
+          }
+        }
+
+        season = season ?? 1;
+        episode = episode ?? 1;
+      }
 
       return {
         props: {
           title: details.title,
-          subtitle: season && episode ? `Season ${season} Episode ${episode}` : undefined,
+          subtitle: `S:${season} E:${episode}`,
           media: {
             mediaType,
             mediaId: details.id,

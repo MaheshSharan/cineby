@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { MediaSummary, MediaType } from "@/lib/tmdb";
 import { getPosterResponsiveUrls } from "@/lib/tmdb/image";
-import { getMediaHref, getPlayHref, getYear } from "@/lib/utils/media";
+import { getEpisodeHref, getMediaHref, getPlayHref, getYear } from "@/lib/utils/media";
 
 import { ChevronDownIcon, SearchIcon, StarIcon, XIcon } from "@/components/ui/icons";
 
@@ -294,7 +294,10 @@ function SearchResultItem({ item, isExpanded, onToggle, onSelect }: SearchResult
   const { mobile } = getPosterResponsiveUrls(item.posterPath);
   const year = getYear(item.releaseDate);
   const typeLabel = item.mediaType === "tv" ? "TV Show" : "Movie";
-  const playHref = getPlayHref(item.mediaType, item.id);
+  const playHref =
+    item.mediaType === "tv"
+      ? getEpisodeHref(item.id, 1, 1)
+      : getPlayHref(item.mediaType, item.id);
   const mediaHref = getMediaHref(item.mediaType, item.id);
 
   return (

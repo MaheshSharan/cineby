@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { MovieDetails, TvDetails } from "@/lib/tmdb";
 import { getHeroBackdropUrl, getLogoUrl } from "@/lib/tmdb/image";
+import { listHistory } from "@/lib/api/history";
 import {
   addToWatchlist,
   checkWatchlist,
   removeFromWatchlist,
 } from "@/lib/api/watchlist";
-import { formatRuntime, getMediaHref, getPlayHref, getYear } from "@/lib/utils/media";
+import { formatRuntime, getEpisodeHref, getMediaHref, getPlayHref, getYear } from "@/lib/utils/media";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { CastRow } from "@/components/detail/CastRow";
@@ -31,6 +32,8 @@ type DetailData = MovieDetails | TvDetails;
 interface DetailPageProps {
   details: DetailData;
   isPlaying: boolean;
+  seasonNumber?: number | null;
+  episodeNumber?: number | null;
 }
 
 const TRAILER_DELAY_MS = 5000;
@@ -43,7 +46,12 @@ const GRADIENT_LEFT_RIGHT =
 const TRAILER_GRADIENT_LEFT_RIGHT =
   "linear-gradient(90deg, rgba(5, 7, 10, 0.78) 0%, rgba(5, 7, 10, 0.35) 50%, rgba(5, 7, 10, 0) 75%)";
 
-export function DetailPage({ details, isPlaying }: DetailPageProps) {
+export function DetailPage({
+  details,
+  isPlaying,
+  seasonNumber,
+  episodeNumber,
+}: DetailPageProps) {
   const router = useRouter();
   const { user, openAuthModal, showToast } = useAuth();
   const [isMuted, setIsMuted] = useState(true);
@@ -54,10 +62,35 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
   const [showTrailer, setShowTrailer] = useState(false);
   const [trailerReady, setTrailerReady] = useState(false);
   const [isPageReady, setIsPageReady] = useState(false);
+  const [historyEpisode, setHistoryEpisode] = useState<{ season: number; episode: number } | null>(null);
 
   const trailer = findTrailer(details.videos);
   const heroBackdrop = getHeroBackdropUrl(details.backdropPath);
   const isTv = details.mediaType === "tv";
+
+  useEffect(() => {
+    if (!isTv || (seasonNumber && episodeNumber) || !user) {
+      return;
+    }
+
+    let isCurrent = true;
+
+    listHistory()
+      .then((historyList) => {
+        if (!isCurrent) return;
+        const match = historyList.find(
+          (item) => item.mediaType === "tv" && item.mediaId === details.id
+        );
+        if (match?.seasonNumber && match?.episodeNumber) {
+          setHistoryEpisode({ season: match.seasonNumber, episode: match.episodeNumber });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [details.id, episodeNumber, isTv, seasonNumber, user]);
 
   useEffect(() => {
     if (isTv) {
@@ -147,17 +180,25 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
   }, []);
 
   if (isPlaying) {
+    const effectiveSeason = isTv ? seasonNumber ?? historyEpisode?.season ?? 1 : null;
+    const effectiveEpisode = isTv ? episodeNumber ?? historyEpisode?.episode ?? 1 : null;
+    const playerSubtitle = isTv
+      ? `S:${effectiveSeason} E:${effectiveEpisode}`
+      : details.releaseDate
+      ? getYear(details.releaseDate) || undefined
+      : undefined;
+
     return (
       <PlayerShell
         title={details.title}
-        subtitle={
-          details.releaseDate ? getYear(details.releaseDate) || undefined : undefined
-        }
+        subtitle={playerSubtitle}
         media={{
           mediaType: details.mediaType,
           mediaId: details.id,
           posterPath: details.posterPath,
           backdropPath: details.backdropPath,
+          seasonNumber: effectiveSeason,
+          episodeNumber: effectiveEpisode,
         }}
         onBack={() => router.push(getMediaHref(details.mediaType, details.id))}
       />
@@ -344,7 +385,15 @@ export function DetailPage({ details, isPlaying }: DetailPageProps) {
 
             <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
               <Link
-                href={getPlayHref(details.mediaType, details.id)}
+                href={
+                  isTv
+                    ? getEpisodeHref(
+                        details.id,
+                        seasonNumber ?? historyEpisode?.season ?? 1,
+                        episodeNumber ?? historyEpisode?.episode ?? 1
+                      )
+                    : getPlayHref(details.mediaType, details.id)
+                }
                 className="flex h-11 w-11 items-center justify-center rounded-full bg-text-hi text-[#05070a] transition-all duration-200 hover:bg-white hover:shadow-glow active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neo-bg md:h-auto md:w-auto md:gap-3 md:px-7 md:py-2.5"
               >
                 <svg

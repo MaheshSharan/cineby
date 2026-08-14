@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import type { MediaSummary } from "@/lib/tmdb";
 import { getBackdropResponsiveUrls } from "@/lib/tmdb/image";
-import { getMediaHref, getPlayHref, getYear } from "@/lib/utils/media";
+import { getEpisodeHref, getMediaHref, getPlayHref, getYear } from "@/lib/utils/media";
 
 import { StarIcon } from "@/components/ui/icons";
 
@@ -82,7 +82,10 @@ function HeroSlide({ item, genreNames }: HeroSlideProps) {
   const { mobile, desktop } = getBackdropResponsiveUrls(item.backdropPath);
   const year = getYear(item.releaseDate);
   const genres = getGenreNames(item, genreNames);
-  const playHref = getPlayHref(item.mediaType, item.id);
+  const playHref =
+    item.mediaType === "tv"
+      ? getEpisodeHref(item.id, 1, 1)
+      : getPlayHref(item.mediaType, item.id);
   const mediaHref = getMediaHref(item.mediaType, item.id);
 
   return (

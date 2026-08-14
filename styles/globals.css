@@ -120,4 +120,46 @@
     background: var(--primary);
     flex-shrink: 0;
   }
+
+  /* ---- Player surface ---- */
+  .player-surface {
+    background: linear-gradient(180deg, #171a1f 0%, #0f1115 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      rgba(255, 255, 255, 0.04) 0px 1px 0px inset,
+      rgba(0, 0, 0, 0.55) 0px 6px 14px -6px;
+  }
+
+  .player-tile {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .cineby-icon-lg {
+    transition: transform 150ms ease, color 150ms ease;
+  }
+
+  .cineby-scale:hover {
+    transform: scale(1.08);
+  }
+
+  .cineby-container video {
+    object-fit: contain;
+  }
+
+  .settings-tabs-scroll {
+    scrollbar-width: none;
+  }
+
+  .settings-tabs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .episode-scroll-hidden {
+    scrollbar-width: none;
+  }
+
+  .episode-scroll-hidden::-webkit-scrollbar {
+    display: none;
+  }
 }

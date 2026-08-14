@@ -17,6 +17,7 @@ import { CastRow } from "@/components/detail/CastRow";
 import { EpisodesSection } from "@/components/detail/EpisodesSection";
 import { RecommendationsRow } from "@/components/detail/RecommendationsRow";
 import { PlayerShell } from "@/components/player/PlayerShell";
+import type { PlayerSeason } from "@/components/player/types";
 import { PageLoader } from "@/components/ui/PageLoader";
 import {
   CheckIcon,
@@ -195,12 +196,17 @@ export function DetailPage({
         media={{
           mediaType: details.mediaType,
           mediaId: details.id,
+          title: details.title,
           posterPath: details.posterPath,
           backdropPath: details.backdropPath,
           seasonNumber: effectiveSeason,
           episodeNumber: effectiveEpisode,
+          seasons: isTv && "seasons" in details ? toPlayerSeasons(details.seasons) : undefined,
         }}
         onBack={() => router.push(getMediaHref(details.mediaType, details.id))}
+        onNavigateEpisode={(season, episode) =>
+          router.push(getEpisodeHref(details.id, season, episode))
+        }
       />
     );
   }
@@ -481,6 +487,18 @@ function DetailMetaItem({ value, isNumeric = false }: DetailMetaItemProps) {
       <span className={isNumeric ? "tabular-nums" : undefined}>{value}</span>
     </span>
   );
+}
+
+function toPlayerSeasons(seasons: TvDetails["seasons"]): PlayerSeason[] {
+  return seasons
+    .filter((season) => season.seasonNumber > 0 && season.episodeCount > 0)
+    .map((season) => ({
+      seasonNumber: season.seasonNumber,
+      name: season.name,
+      episodeCount: season.episodeCount,
+      overview: season.overview,
+    }))
+    .sort((a, b) => a.seasonNumber - b.seasonNumber);
 }
 
 function findTrailer(

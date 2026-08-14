@@ -1,11 +1,15 @@
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
+import { useRouter } from "next/router";
 
 import { getMovieDetails, getTvDetails } from "@/lib/tmdb/server";
+import type { TvDetails } from "@/lib/tmdb";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { listHistory } from "@/lib/db/history";
+import { getEpisodeHref } from "@/lib/utils/media";
 
-import { PlayerShell, type PlayerMedia } from "@/components/player/PlayerShell";
+import { PlayerShell } from "@/components/player/PlayerShell";
+import type { PlayerMedia, PlayerSeason } from "@/components/player/types";
 
 interface WatchPageProps {
   title: string;
@@ -14,12 +18,21 @@ interface WatchPageProps {
 }
 
 const WatchPage: NextPage<WatchPageProps> = ({ title, subtitle, media }) => {
+  const router = useRouter();
+
   return (
     <>
       <Head>
         <title>{`Watch ${title} | Cineby`}</title>
       </Head>
-      <PlayerShell title={title} subtitle={subtitle} media={media} />
+      <PlayerShell
+        title={title}
+        subtitle={subtitle}
+        media={media}
+        onNavigateEpisode={(season, episode) =>
+          router.push(getEpisodeHref(media.mediaId, season, episode))
+        }
+      />
     </>
   );
 };
@@ -63,10 +76,12 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
           media: {
             mediaType,
             mediaId: details.id,
+            title: details.title,
             posterPath: details.posterPath,
             backdropPath: details.backdropPath,
             seasonNumber: season,
             episodeNumber: episode,
+            seasons: toPlayerSeasons(details.seasons),
           },
         },
       };
@@ -81,6 +96,7 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
         media: {
           mediaType,
           mediaId: details.id,
+          title: details.title,
           posterPath: details.posterPath,
           backdropPath: details.backdropPath,
         },
@@ -95,6 +111,18 @@ function parseOptionalNumber(value: string | undefined): number | null {
   const parsed = Number.parseInt(value ?? "", 10);
 
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function toPlayerSeasons(seasons: TvDetails["seasons"]): PlayerSeason[] {
+  return seasons
+    .filter((season) => season.seasonNumber > 0 && season.episodeCount > 0)
+    .map((season) => ({
+      seasonNumber: season.seasonNumber,
+      name: season.name,
+      episodeCount: season.episodeCount,
+      overview: season.overview,
+    }))
+    .sort((a, b) => a.seasonNumber - b.seasonNumber);
 }
 
 export default WatchPage;

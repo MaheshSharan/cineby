@@ -1,34 +1,31 @@
-import { useEffect } from "react";
+import { useCallback } from "react";
 
-export interface PlayerMedia {
-  mediaType: "movie" | "tv";
-  mediaId: number;
-  posterPath?: string | null;
-  backdropPath?: string | null;
-  seasonNumber?: number | null;
-  episodeNumber?: number | null;
-  duration?: string | null;
-  progress?: number | null;
-}
+import type { PlayerMedia } from "./types";
+import { PlayerContainer } from "./PlayerContainer";
 
 interface PlayerShellProps {
   title: string;
   subtitle?: string;
   media?: PlayerMedia;
   onBack?: () => void;
+  onTimeUpdate?: (currentTime: number, duration: number) => void;
+  onEnded?: () => void;
+  onNavigateEpisode?: (seasonNumber: number, episodeNumber: number) => void;
 }
 
-const HISTORY_SAVE_INTERVAL_MS = 20000;
-
-export function PlayerShell({ title, subtitle, media, onBack }: PlayerShellProps) {
-  useEffect(() => {
-    if (!media) {
-      return;
-    }
-
-    const saveHistory = () => {
-      // Recording history is best-effort: failures (e.g. anonymous playback)
-      // must never block the player UI.
+export function PlayerShell({
+  title,
+  subtitle,
+  media,
+  onBack,
+  onTimeUpdate,
+  onEnded,
+  onNavigateEpisode,
+}: PlayerShellProps) {
+  const handleTimeUpdate = useCallback(
+    (currentTime: number, duration: number) => {
+      if (!media) return;
+      // Persist history through the existing POST endpoint.
       fetch("/api/history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -41,69 +38,30 @@ export function PlayerShell({ title, subtitle, media, onBack }: PlayerShellProps
           seasonNumber: media.seasonNumber ?? null,
           episodeNumber: media.episodeNumber ?? null,
           duration: media.duration ?? null,
-          progress: media.progress ?? null,
+          progress: Math.round((currentTime / Math.max(1, duration)) * 100),
         }),
       }).catch(() => {});
-    };
-
-    // Save only after 20 seconds of continuous playback, and update every 20 seconds
-    const timer = window.setTimeout(saveHistory, HISTORY_SAVE_INTERVAL_MS);
-    const interval = window.setInterval(saveHistory, HISTORY_SAVE_INTERVAL_MS);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.clearInterval(interval);
-    };
-  }, [media, title]);
+      onTimeUpdate?.(currentTime, duration);
+    },
+    [media, onTimeUpdate, title]
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black">
-      <div className="flex items-center justify-between px-4 py-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-4 w-4 rotate-180"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="m9 18 6-6-6-6" />
-          </svg>
-          Go back
-        </button>
-        <span className="truncate text-sm font-medium">{title}</span>
-        <span className="w-20" />
-      </div>
-
-      <div className="flex flex-1 items-center justify-center px-4">
-        <div className="w-full max-w-4xl">
-          <div className="relative flex aspect-video w-full flex-col items-center justify-center gap-5 rounded-lg border border-border bg-[#0a0c10]">
-            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-[0_0_40px_rgba(220,38,38,0.4)]">
-              <svg viewBox="0 0 24 24" className="ml-1 h-9 w-9 fill-current" aria-hidden="true">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </span>
-
-            <div className="text-center">
-              <p className="text-lg font-semibold">{title}</p>
-              {subtitle ? (
-                <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-              ) : null}
-            </div>
-
-            <p className="max-w-md text-center text-xs leading-relaxed text-muted-foreground">
-              Playback source will be available once the media stream resolver is integrated.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <PlayerContainer
+      media={media ?? defaultMedia(title)}
+      subtitle={subtitle}
+      onBack={onBack}
+      onTimeUpdate={handleTimeUpdate}
+      onEnded={onEnded}
+      onNavigateEpisode={onNavigateEpisode}
+    />
   );
+}
+
+function defaultMedia(title: string): PlayerMedia {
+  return {
+    mediaType: "movie",
+    mediaId: 0,
+    title,
+  };
 }

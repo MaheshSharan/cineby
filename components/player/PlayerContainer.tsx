@@ -31,8 +31,6 @@ interface StreamState {
   isError: boolean;
 }
 
-const EMPTY_TRACKS: SubtitleTrack[] = [];
-
 function detectFormat(url: string): MediaSource["format"] {
   const lower = url.toLowerCase();
   if (lower.includes(".m3u8")) return "hls";
@@ -68,6 +66,8 @@ export function PlayerContainer({
   });
 
   const [stream, setStream] = useState<StreamState>({ source: null, isError: false });
+  const [availableSources, setAvailableSources] = useState<MediaSource[]>([]);
+  const [availableSubtitles, setAvailableSubtitles] = useState<SubtitleTrack[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("quality");
   const [isEpisodesOpen, setIsEpisodesOpen] = useState(false);
@@ -194,11 +194,19 @@ export function PlayerContainer({
         episodeNumber: media.episodeNumber,
       };
 
-      const source = await resolveStream(serverId, request);
+      const result = await resolveStream(serverId, request);
       if (requestId !== requestIdRef.current) {
         return;
       }
 
+      if (result.subtitles) {
+        setAvailableSubtitles(result.subtitles);
+      }
+      if (result.sources && result.sources.length > 0) {
+        setAvailableSources(result.sources);
+      }
+
+      const source = result.source;
       if (!source) {
         setStream({ source: null, isError: true });
         return;
@@ -362,7 +370,25 @@ export function PlayerContainer({
     playerState.setRate(rate);
   }, [playerState.setRate]);
 
-  const serverOptions = useMemo<ServerOption[]>(() => SERVERS, []);
+  const serverOptions = useMemo<ServerOption[]>(() => {
+    if (availableSources.length > 0) {
+      const list: ServerOption[] = [
+        { id: "default", name: "Auto", description: "Best available source", kind: "default" },
+      ];
+      for (const src of availableSources) {
+        if (!list.some((s) => s.id === src.id)) {
+          list.push({
+            id: src.id,
+            name: src.name,
+            description: src.quality ? `${src.quality} stream` : "Direct source",
+            kind: src.kind,
+          });
+        }
+      }
+      return list;
+    }
+    return SERVERS;
+  }, [availableSources]);
 
   const isLoading = !stream.source && !stream.isError;
 
@@ -474,7 +500,7 @@ export function PlayerContainer({
             onClose={() => setIsSettingsOpen(false)}
             quality={settings.quality}
             onQualityChange={handleQualityChange}
-            subtitleTracks={EMPTY_TRACKS}
+            subtitleTracks={availableSubtitles}
             subtitleLabel={subtitles.activeLabel}
             onSubtitleChange={subtitles.selectTrack}
             servers={serverOptions}

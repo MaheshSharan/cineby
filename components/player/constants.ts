@@ -25,6 +25,5 @@ export const PLAYBACK_RATES: PlaybackRate[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.
 
 export const SERVERS: ServerOption[] = [
   { id: "default", name: "Auto", description: "Best available source", kind: "default" },
-  { id: "test", name: "Test Server", description: "Local HLS test source", kind: "test" },
-  { id: "bunny", name: "Bunny", description: "Bunny.net HLS source", kind: "bunny" },
+  { id: "vixsrc", name: "Vixsrc", description: "Direct HLS Stream", kind: "default" },
 ];

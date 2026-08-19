@@ -1,7 +1,6 @@
 import type { Quality, StreamResponse } from "@/lib/providers/types";
 import type { MediaSource, QualityLabel, SubtitleTrack } from "../types";
 import type { StreamRequest, StreamResolutionResult } from "./types";
-import { TEST_PROVIDER } from "./test";
 
 function toQualityLabel(quality?: Quality | string): QualityLabel | null {
   switch (quality) {
@@ -46,7 +45,7 @@ export async function resolveStream(
 
         const mappedSources: MediaSource[] = (payload.sources ?? []).map((src) => ({
           id: src.provider.id,
-          kind: src.provider.id === "test" ? "test" : "default",
+          kind: "default",
           name: src.provider.name,
           url: src.url,
           format: src.type === "unknown" ? "hls" : src.type,
@@ -74,11 +73,9 @@ export async function resolveStream(
     // Network or client abort
   }
 
-  // Fallback to local test provider if API is unavailable
-  const fallbackSource = await TEST_PROVIDER.resolve(request);
   return {
-    source: fallbackSource,
-    sources: fallbackSource ? [fallbackSource] : [],
+    source: null,
+    sources: [],
     subtitles: [],
   };
 }

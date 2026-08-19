@@ -1,7 +1,7 @@
 import type { Provider } from "../types";
-import { testProvider } from "./test";
+import { vixsrcProvider } from "./vixsrc";
 
-// List of all registered providers
+// Active provider list (Test provider removed/disabled)
 export const ALL_PROVIDERS: Provider[] = [
-  testProvider,
+  vixsrcProvider,
 ];

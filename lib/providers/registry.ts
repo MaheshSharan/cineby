@@ -1,5 +1,6 @@
 import { DEFAULT_PROVIDER_TIMEOUT_MS, QUALITY_RANKS } from "./constants";
 import { isCircuitOpen, recordFailure, recordSuccess } from "./circuitBreaker";
+import { buildStreamProxyUrl } from "./proxy";
 import { ALL_PROVIDERS } from "./sources";
 import type { Provider, StreamRequest, StreamResponse, StreamSource, SubtitleTrack } from "./types";
 import { logError } from "@/lib/logger";
@@ -83,6 +84,7 @@ export async function resolveAllStreams(
           seenSourceUrls.add(source.url);
           collectedSources.push({
             ...source,
+            url: buildStreamProxyUrl(source.url, source.headers),
             provider: {
               id: provider.id,
               name: provider.name,
@@ -96,7 +98,10 @@ export async function resolveAllStreams(
         const key = `${sub.label.toLowerCase()}_${sub.lang?.toLowerCase() ?? ""}`;
         if (sub.url && !seenSubtitleLabels.has(key)) {
           seenSubtitleLabels.add(key);
-          collectedSubtitles.push(sub);
+          collectedSubtitles.push({
+            ...sub,
+            url: buildStreamProxyUrl(sub.url, sub.headers),
+          });
         }
       }
     }

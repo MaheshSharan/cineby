@@ -2,22 +2,26 @@ export function buildStreamProxyUrl(
   targetUrl: string,
   headers?: Record<string, string>
 ): string {
-  const proxyBase =
-    process.env.STREAM_PROXY_URL?.trim() ||
-    process.env.NEXT_PUBLIC_STREAM_PROXY_URL?.trim();
-
-  if (!proxyBase || !targetUrl) {
+  if (!targetUrl) {
     return targetUrl;
   }
+
+  const proxyBase =
+    process.env.STREAM_PROXY_URL?.trim() ||
+    process.env.NEXT_PUBLIC_STREAM_PROXY_URL?.trim() ||
+    "/api/stream/proxy";
 
   const cleanBase = proxyBase.replace(/\/+$/, "");
 
   // Prevent double-proxying or proxying local blob/data schemes
-  if (targetUrl.startsWith(cleanBase) || targetUrl.startsWith("blob:") || targetUrl.startsWith("data:")) {
+  if (
+    targetUrl.startsWith(cleanBase) ||
+    targetUrl.startsWith("blob:") ||
+    targetUrl.startsWith("data:")
+  ) {
     return targetUrl;
   }
 
-  // Constructs standard Worker format: https://my-worker.workers.dev/?url=<encoded>&headers=<encoded_json>
   const params = new URLSearchParams({
     url: targetUrl,
   });
@@ -30,12 +34,13 @@ export function buildStreamProxyUrl(
     return `${cleanBase}&${params.toString()}`;
   }
 
+  if (cleanBase.startsWith("/")) {
+    return `${cleanBase}?${params.toString()}`;
+  }
+
   return `${cleanBase}/?${params.toString()}`;
 }
 
 export function isStreamProxyConfigured(): boolean {
-  return Boolean(
-    process.env.STREAM_PROXY_URL?.trim() ||
-    process.env.NEXT_PUBLIC_STREAM_PROXY_URL?.trim()
-  );
+  return true;
 }

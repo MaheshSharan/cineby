@@ -55,7 +55,7 @@ export async function resolveAllStreams(
 
   const targetProviders = ALL_PROVIDERS.filter((p) => {
     if (options?.targetProviderId && options.targetProviderId !== "default") {
-      return p.id === options.targetProviderId;
+      return p.id === options.targetProviderId || options.targetProviderId.startsWith(`${p.id}-`);
     }
     return isProviderEnabled(p) && !isCircuitOpen(p.id);
   });
@@ -65,7 +65,13 @@ export async function resolveAllStreams(
   }
 
   const results = await Promise.allSettled(
-    targetProviders.map((p) => fetchWithTimeout(p, request, timeoutMs))
+    targetProviders.map((p) =>
+      fetchWithTimeout(
+        p,
+        { ...request, serverId: options?.targetProviderId },
+        timeoutMs
+      )
+    )
   );
 
   const collectedSources: StreamSource[] = [];
@@ -84,10 +90,10 @@ export async function resolveAllStreams(
           seenSourceUrls.add(source.url);
           collectedSources.push({
             ...source,
-            url: buildStreamProxyUrl(source.url, source.headers),
+            url: source.direct ? source.url : buildStreamProxyUrl(source.url, source.headers),
             provider: {
-              id: provider.id,
-              name: provider.name,
+              id: source.provider?.id || provider.id,
+              name: source.provider?.name || provider.name,
             },
           });
         }

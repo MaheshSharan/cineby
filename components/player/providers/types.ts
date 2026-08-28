@@ -1,5 +1,11 @@
 import type { MediaSource, MediaType, SubtitleTrack } from "../types";
 
+export interface StreamProvider {
+  id: string;
+  name: string;
+  resolve: (request: StreamRequest) => Promise<MediaSource | null>;
+}
+
 export interface StreamRequest {
   mediaType: MediaType;
   mediaId: number;

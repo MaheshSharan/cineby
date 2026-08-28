@@ -52,6 +52,7 @@ export function PlayerContainer({
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaEngineRef = useRef<MediaEngine | null>(null);
+  const streamRequestControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const endedRef = useRef(false);
 
@@ -66,6 +67,7 @@ export function PlayerContainer({
   });
 
   const [stream, setStream] = useState<StreamState>({ source: null, isError: false });
+  const [isResolvingStream, setIsResolvingStream] = useState(true);
   const [availableSources, setAvailableSources] = useState<MediaSource[]>([]);
   const [availableSubtitles, setAvailableSubtitles] = useState<SubtitleTrack[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -151,8 +153,8 @@ export function PlayerContainer({
   const playerState = usePlayerState({
     videoRef,
     autoPlay: true,
-    onTimeUpdate,
   });
+  const { setRate } = playerState;
 
   const controls = usePlayerControls({
     onTogglePlay: playerState.togglePlay,
@@ -185,19 +187,25 @@ export function PlayerContainer({
       if (!element) return;
 
       const requestId = ++requestIdRef.current;
-      setStream({ source: null, isError: false });
+      streamRequestControllerRef.current?.abort();
+      const controller = new AbortController();
+      streamRequestControllerRef.current = controller;
+      setIsResolvingStream(true);
+      setStream((current) => ({ ...current, isError: false }));
 
       const request = {
         mediaType: media.mediaType,
         mediaId: media.mediaId,
         seasonNumber: media.seasonNumber,
         episodeNumber: media.episodeNumber,
+        signal: controller.signal,
       };
 
       const result = await resolveStream(serverId, request);
       if (requestId !== requestIdRef.current) {
         return;
       }
+      setIsResolvingStream(false);
 
       if (result.subtitles) {
         setAvailableSubtitles(result.subtitles);
@@ -222,7 +230,12 @@ export function PlayerContainer({
       const engine = createMediaEngine(element, source.url, format);
       mediaEngineRef.current = engine;
 
+      endedRef.current = false;
       setStream({ source, isError: false });
+      void element.play().catch(() => {
+        // Autoplay can be blocked by browser policy; the visible play control
+        // remains available without turning a policy decision into an error.
+      });
     },
     [media.mediaType, media.mediaId, media.seasonNumber, media.episodeNumber]
   );
@@ -235,6 +248,8 @@ export function PlayerContainer({
   // Cleanup media engine + blob URLs
   useEffect(() => {
     const onUnmount = () => {
+      streamRequestControllerRef.current?.abort();
+      streamRequestControllerRef.current = null;
       mediaEngineRef.current?.destroy();
       mediaEngineRef.current = null;
 
@@ -367,30 +382,31 @@ export function PlayerContainer({
 
   const handleRateChange = useCallback((rate: PlayerSettings["rate"]) => {
     setSettings((current) => ({ ...current, rate }));
-    playerState.setRate(rate);
-  }, [playerState.setRate]);
+    setRate(rate);
+  }, [setRate]);
 
   const serverOptions = useMemo<ServerOption[]>(() => {
-    if (availableSources.length > 0) {
-      const list: ServerOption[] = [
-        { id: "default", name: "Auto", description: "Best available source", kind: "default" },
-      ];
-      for (const src of availableSources) {
-        if (!list.some((s) => s.id === src.id)) {
-          list.push({
-            id: src.id,
-            name: src.name,
-            description: src.quality ? `${src.quality} stream` : "Direct source",
-            kind: src.kind,
-          });
-        }
+    const list = [...SERVERS];
+    for (const src of availableSources) {
+      const existingIndex = list.findIndex((server) => server.id === src.id);
+      const sourceOption: ServerOption = {
+        id: src.id,
+        name: src.name,
+        description: src.quality ? `${src.quality} stream` : "Direct source",
+        kind: src.kind,
+      };
+
+      if (existingIndex >= 0) {
+        list[existingIndex] = sourceOption;
+      } else {
+        list.push(sourceOption);
       }
-      return list;
     }
-    return SERVERS;
+
+    return list;
   }, [availableSources]);
 
-  const isLoading = !stream.source && !stream.isError;
+  const isLoading = isResolvingStream && !stream.source;
 
   return (
     <div ref={containerRef} className="fixed inset-0 bg-black">
@@ -403,17 +419,17 @@ export function PlayerContainer({
               ref={videoRef}
               className="h-full w-full"
               playsInline
-              preload="metadata"
+              preload="auto"
             />
           </div>
 
           {/* Top header */}
           <PlayerHeader onBack={onBack} visible={controls.areControlsVisible} />
 
-          {/* Loading / buffering overlay */}
+          {/* Playback status indicator. It must never cover or block player controls. */}
           {isLoading || playerState.isBuffering ? (
-            <div className="absolute inset-0 z-[100] bg-black/70 flex items-center justify-center pointer-events-none">
-              <LoadingSpinner label={isLoading ? "Loading stream…" : undefined} />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+              <LoadingSpinner label={null} className="gap-0 [&>svg]:h-7 [&>svg]:w-7" />
             </div>
           ) : null}
 

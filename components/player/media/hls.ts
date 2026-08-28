@@ -26,8 +26,11 @@ function getHlsQualityCap(quality: QualityLabel | null): number {
 export function attachHls(video: HTMLVideoElement, src: string): HlsController {
   const hls = new Hls({
     enableWorker: true,
-    backBufferLength: 60,
-    maxBufferLength: 30,
+    backBufferLength: 30,
+    maxBufferLength: 20,
+    maxMaxBufferLength: 40,
+    startLevel: -1,
+    capLevelToPlayerSize: true,
   });
 
   hls.loadSource(src);

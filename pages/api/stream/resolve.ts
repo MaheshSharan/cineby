@@ -38,7 +38,7 @@ export default async function handler(
     );
 
     return res.status(200).json(result);
-  } catch (error) {
+  } catch {
     return res.status(500).json({
       sources: [],
       subtitles: [],

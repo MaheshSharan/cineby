@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import type { PlaybackRate, QualityLabel, ServerOption, SubtitleTrack } from "../types";
 import { PLAYBACK_RATES, QUALITIES, QUALITY_BADGES } from "../constants";
 

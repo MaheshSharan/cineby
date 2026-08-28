@@ -1,5 +1,5 @@
 interface LoadingSpinnerProps {
-  label?: string;
+  label?: string | null;
   overlay?: boolean;
   className?: string;
 }

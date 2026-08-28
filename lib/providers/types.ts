@@ -9,6 +9,7 @@ export interface StreamRequest {
   type: MediaType;
   season?: number | null;
   episode?: number | null;
+  serverId?: string;
   signal?: AbortSignal;
 }
 
@@ -23,6 +24,7 @@ export interface StreamSource {
   quality: Quality;
   headers?: Record<string, string>;
   audioTracks?: AudioTrack[];
+  direct?: boolean;
   provider: {
     id: string;
     name: string;

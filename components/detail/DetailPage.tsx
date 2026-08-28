@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MovieDetails, TvDetails } from "@/lib/tmdb";
 import { getHeroBackdropUrl, getLogoUrl } from "@/lib/tmdb/image";
@@ -10,7 +10,8 @@ import {
   checkWatchlist,
   removeFromWatchlist,
 } from "@/lib/api/watchlist";
-import { formatRuntime, getEpisodeHref, getMediaHref, getPlayHref, getYear } from "@/lib/utils/media";
+import { getEpisodeHref, getMediaHref, getPlayHref, getYear, formatRuntime } from "@/lib/utils/media";
+import { getMovyRatings, getMovyTrailerUrl, type MovyRatings } from "@/lib/services/movy";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { CastRow } from "@/components/detail/CastRow";
@@ -25,7 +26,6 @@ import {
   ListOrderedIcon,
   PlusIcon,
   SparklesIcon,
-  StarIcon,
 } from "@/components/ui/icons";
 
 type DetailData = MovieDetails | TvDetails;
@@ -64,8 +64,10 @@ export function DetailPage({
   const [trailerReady, setTrailerReady] = useState(false);
   const [isPageReady, setIsPageReady] = useState(false);
   const [historyEpisode, setHistoryEpisode] = useState<{ season: number; episode: number } | null>(null);
+  const [ratings, setRatings] = useState<MovyRatings | null>(null);
+  const [directTrailerUrl, setDirectTrailerUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const trailer = findTrailer(details.videos);
   const heroBackdrop = getHeroBackdropUrl(details.backdropPath);
   const isTv = details.mediaType === "tv";
 
@@ -110,14 +112,47 @@ export function DetailPage({
   }, []);
 
   useEffect(() => {
-    if (!trailer) {
+    let isCurrent = true;
+
+    getMovyRatings({
+      id: details.id,
+      title: details.title,
+      year: details.releaseDate ? getYear(details.releaseDate) : null,
+      type: details.mediaType,
+    }).then((data) => {
+      if (isCurrent && data) {
+        setRatings(data);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [details.id, details.title, details.releaseDate, details.mediaType]);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    getMovyTrailerUrl(details.imdbId).then((url) => {
+      if (isCurrent && url) {
+        setDirectTrailerUrl(url);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [details.imdbId]);
+
+  useEffect(() => {
+    if (!directTrailerUrl) {
       return;
     }
 
     const timer = window.setTimeout(() => setShowTrailer(true), TRAILER_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [trailer]);
+  }, [directTrailerUrl]);
 
   useEffect(() => {
     if (!user) {
@@ -259,29 +294,24 @@ export function DetailPage({
             style={{ background: GRADIENT_TOP_BOTTOM }}
           />
 
-          {trailer && showTrailer ? (
+          {directTrailerUrl && showTrailer ? (
             <div
-              className="absolute inset-0 w-full overflow-hidden transition-opacity duration-300 ease-in-out"
+              className="absolute inset-0 w-full overflow-hidden transition-opacity duration-700 ease-in-out"
               style={{ opacity: trailerReady ? 1 : 0 }}
             >
-              <iframe
-                key={isMuted ? "muted" : "unmuted"}
-                src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=${
-                  isMuted ? 1 : 0
-                }&controls=0&showinfo=0&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1&disablekb=1&fs=0&rel=0&origin=${
-                  typeof window !== "undefined" ? window.location.origin : ""
-                }`}
-                title="Background Trailer"
-                className="h-full w-full"
-                style={{
-                  transform: "scale(1.52)",
-                  transformOrigin: "center center",
-                  pointerEvents: "none",
+              <video
+                ref={videoRef}
+                src={directTrailerUrl}
+                autoPlay
+                muted={isMuted}
+                playsInline
+                preload="auto"
+                onCanPlay={() => setTrailerReady(true)}
+                onEnded={() => {
+                  setShowTrailer(false);
+                  setTrailerReady(false);
                 }}
-                sandbox="allow-scripts allow-same-origin allow-presentation"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                allowFullScreen
-                onLoad={() => setTrailerReady(true)}
+                className="h-full w-full object-cover object-center pointer-events-none"
               />
               <div
                 aria-hidden="true"
@@ -297,12 +327,20 @@ export function DetailPage({
           ) : null}
         </div>
 
-        {trailer && showTrailer && trailerReady ? (
+        {directTrailerUrl && showTrailer && trailerReady ? (
           <button
             type="button"
-            onClick={() => setIsMuted((prev) => !prev)}
+            onClick={() => {
+              setIsMuted((prev) => {
+                const next = !prev;
+                if (videoRef.current) {
+                  videoRef.current.muted = next;
+                }
+                return next;
+              });
+            }}
             aria-label={isMuted ? "Unmute trailer" : "Mute trailer"}
-            className="absolute bottom-6 right-6 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-black/70 md:bottom-8 md:right-8"
+            className="absolute bottom-6 right-6 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-black/70 md:bottom-8 md:right-8 cursor-pointer"
           >
             {isMuted ? (
               <svg
@@ -363,28 +401,104 @@ export function DetailPage({
             )}
 
             <div
-              className={`mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 overflow-hidden text-[13px] text-white/85 transition-all duration-500 ease-out ${
-                hasEntered ? "max-h-[64px] opacity-100" : "max-h-0 opacity-0"
+              className={`mb-4 overflow-hidden transition-all duration-500 ease-out ${
+                hasEntered ? "max-h-[120px] opacity-100" : "max-h-0 opacity-0"
               }`}
               style={{ textShadow: "rgba(0,0,0,0.65) 0px 1px 4px" }}
             >
-              {details.voteAverage > 0 ? (
-                <span className="inline-flex items-center gap-1.5 text-accent-hi">
-                  <StarIcon size={13} className="fill-primary text-primary" />
-                  <span className="tabular-nums font-medium">
-                    {details.voteAverage.toFixed(0)}
+              {/* Attributes (Year • Runtime • Genres) */}
+              <div className="flex flex-wrap items-center text-[15px] font-medium text-white/90">
+                {details.releaseDate ? (
+                  <span className="tabular-nums">{getYear(details.releaseDate)}</span>
+                ) : null}
+                {"runtime" in details && details.runtime ? (
+                  <span className="inline-flex items-center">
+                    <span className="mx-2 select-none text-white/55" aria-hidden="true">
+                      •
+                    </span>
+                    <span className="tabular-nums">{formatRuntime(details.runtime)}</span>
                   </span>
-                </span>
-              ) : null}
-              {details.releaseDate ? (
-                <DetailMetaItem value={getYear(details.releaseDate)} />
-              ) : null}
-              {"runtime" in details && details.runtime ? (
-                <DetailMetaItem value={formatRuntime(details.runtime)} isNumeric />
-              ) : null}
-              {details.genres.map((genre) => (
-                <DetailMetaItem key={genre.id} value={genre.name} />
-              ))}
+                ) : null}
+                {details.genres.map((genre) => (
+                  <span key={genre.id} className="inline-flex items-center">
+                    <span className="mx-2 select-none text-white/55" aria-hidden="true">
+                      •
+                    </span>
+                    <span>{genre.name}</span>
+                  </span>
+                ))}
+              </div>
+
+              {/* Ratings Badges (TMDB, IMDb, Rotten Tomatoes Critics & Audience) */}
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] font-semibold text-white/90">
+                {details.voteAverage > 0 ? (
+                  <span
+                    className="inline-flex items-center gap-2 cursor-help"
+                    title="TMDB · Rated by users"
+                  >
+                    <span className="inline-flex items-center justify-center h-[18px] px-1.5 rounded-[3px] bg-[#01b4e4] text-[#0d253f] text-[9px] font-black tracking-tight leading-none [text-shadow:none]">
+                      TMDB
+                    </span>
+                    <span className="tabular-nums leading-none">
+                      {details.voteAverage.toFixed(1)}
+                    </span>
+                  </span>
+                ) : null}
+
+                {ratings?.imdb ? (
+                  <span
+                    className="inline-flex items-center gap-2 cursor-help"
+                    title="IMDb · Rated by users"
+                  >
+                    <span className="inline-flex items-center justify-center h-[18px] px-1.5 rounded-[3px] bg-[#f5c518] text-[#0d0d0d] text-[9px] font-black tracking-tight leading-none [text-shadow:none]">
+                      IMDb
+                    </span>
+                    <span className="tabular-nums leading-none">
+                      {ratings.imdb.toFixed(1)}
+                    </span>
+                  </span>
+                ) : null}
+
+                {ratings?.rottenTomatoes ? (
+                  <span
+                    className="inline-flex items-center gap-1.5 cursor-help"
+                    title="Rotten Tomatoes · Rated by critics"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="block h-5 w-5 shrink-0"
+                      aria-hidden="true"
+                    >
+                      <path fill="#fa320a" d="M12 7.2c4.6 0 8.2 3.4 8.2 7.4S16.6 22 12 22 3.8 18.6 3.8 14.6 7.4 7.2 12 7.2Z" />
+                      <path fill="#1f8a2e" d="M12.1 3c.2 1.6-.6 2.8-1.8 3.4 1.6.1 3.1-.8 4-2.3.4 1.6-.2 3.1-1.4 4.1 1.3-.2 2.4-1 3.1-2.2-.2 1.5-1.2 2.7-2.6 3.2.2-2.2-1.4-4.1-3.6-4.6.8.1 1.4-.4 1.6-1.2.1-.2.4-.5.7-.4Z" />
+                    </svg>
+                    <span className="tabular-nums leading-none">{ratings.rottenTomatoes}%</span>
+                  </span>
+                ) : null}
+
+                {ratings?.rottenTomatoesAudience ? (
+                  <span
+                    className="inline-flex items-center gap-1.5 cursor-help"
+                    title="Rotten Tomatoes · Rated by users"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="block h-5 w-5 shrink-0"
+                      aria-hidden="true"
+                    >
+                      <path fill="#f3c14a" d="M8.2 6.2c.4-1.3 1.8-1.8 2.7-1.1.3-1.2 1.7-1.7 2.6-.8.5-1 1.9-1.1 2.6-.1.8-.6 2 .1 2.1 1.2.9.2 1.4 1.4.9 2.1H6.8c-.6-.8 0-2.1 1.4-2.3Z" />
+                      <path fill="#f2a11a" d="M9.4 5.4c.2.8.8 1.3 1.5 1.4-.4-1-.2-1.8.4-2.3-.9.1-1.6.4-1.9.9Z" />
+                      <path fill="#e23b32" d="M6.4 10.2h11.2l-1.1 10.2c-.1.8-.8 1.4-1.6 1.4H9.1c-.8 0-1.5-.6-1.6-1.4L6.4 10.2Z" />
+                      <path fill="#fff" d="M9.2 10.2h1.7l-.7 11.6H9.1c-.3 0-.6-.1-.8-.3l.9-11.3Zm4 0h1.7l.8 11.6h-1.8L13.2 10.2Z" />
+                    </svg>
+                    <span className="tabular-nums leading-none">{ratings.rottenTomatoesAudience}%</span>
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             {details.overview ? (
@@ -484,22 +598,6 @@ export function DetailPage({
   );
 }
 
-interface DetailMetaItemProps {
-  value: string;
-  isNumeric?: boolean;
-}
-
-function DetailMetaItem({ value, isNumeric = false }: DetailMetaItemProps) {
-  return (
-    <span className="inline-flex items-center gap-2.5">
-      <span aria-hidden="true" className="select-none text-white/35">
-        ·
-      </span>
-      <span className={isNumeric ? "tabular-nums" : undefined}>{value}</span>
-    </span>
-  );
-}
-
 function toPlayerSeasons(seasons: TvDetails["seasons"]): PlayerSeason[] {
   return seasons
     .filter((season) => season.seasonNumber > 0 && season.episodeCount > 0)
@@ -510,18 +608,4 @@ function toPlayerSeasons(seasons: TvDetails["seasons"]): PlayerSeason[] {
       overview: season.overview,
     }))
     .sort((a, b) => a.seasonNumber - b.seasonNumber);
-}
-
-function findTrailer(
-  videos: MovieDetails["videos"]
-): MovieDetails["videos"][number] | undefined {
-  const youtubeVideos = videos.filter((video) =>
-    video.site.toLowerCase() === "youtube"
-  );
-
-  return (
-    youtubeVideos.find((video) => video.type === "Trailer") ??
-    youtubeVideos.find((video) => video.type === "Teaser") ??
-    youtubeVideos[0]
-  );
 }

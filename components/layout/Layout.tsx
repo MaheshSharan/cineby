@@ -8,11 +8,18 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const FULL_BLEED_ROUTES = ["/movie/[...params]", "/tv/[...params]"];
+const FULL_BLEED_ROUTES = [
+  "/movie/[...params]",
+  "/tv/[...params]",
+  "/profiles",
+  "/login",
+  "/register",
+];
 
 export function Layout({ children }: LayoutProps) {
   const router = useRouter();
-  const isFullBleed = FULL_BLEED_ROUTES.includes(router.pathname);
+  const isFullBleed =
+    FULL_BLEED_ROUTES.includes(router.pathname) || router.pathname.startsWith("/profiles");
 
   if (isFullBleed) {
     return <main className="flex-1">{children}</main>;

@@ -160,11 +160,136 @@
     display: none;
   }
 
-  .episode-scroll-hidden {
-    scrollbar-width: none;
-  }
-
   .episode-scroll-hidden::-webkit-scrollbar {
     display: none;
+  }
+
+  /* ---- Movy Exact Auth Wall & Poster Marquee ---- */
+  .auth-dots {
+    pointer-events: none;
+    z-index: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, rgba(0, 0, 0, 0) 1px);
+    background-size: 22px 22px;
+    position: absolute;
+    inset: 0px;
+    mask-image: radial-gradient(85% 75% at 58% 48%, rgb(0, 0, 0) 12%, rgba(0, 0, 0, 0) 72%);
+    -webkit-mask-image: radial-gradient(85% 75% at 58% 48%, rgb(0, 0, 0) 12%, rgba(0, 0, 0, 0) 72%);
+  }
+
+  .poster-wall {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .poster-row {
+    justify-content: stretch;
+    gap: 0.7rem;
+    width: 100%;
+    height: 100%;
+    padding: 0px 0.75rem 0px 0.35rem;
+    display: flex;
+  }
+
+  .poster-track {
+    flex-direction: column;
+    flex: 1 1 0px;
+    gap: 0.7rem;
+    min-width: 0px;
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .poster-rail {
+    animation: poster-marquee-vertical var(--duration, 40s) linear infinite;
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: 0.7rem;
+    display: flex;
+  }
+
+  .poster-reverse {
+    animation-direction: reverse;
+  }
+
+  .poster-offset .poster-rail {
+    animation-delay: calc(var(--duration, 40s) * -0.32);
+  }
+
+  .poster-item {
+    aspect-ratio: 2 / 3;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.85rem;
+    flex-shrink: 0;
+    width: 100%;
+    height: auto;
+    position: relative;
+    overflow: hidden;
+    box-shadow: rgba(0, 0, 0, 0.45) 0px 12px 40px;
+  }
+
+  .poster-item img {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0px;
+  }
+
+  .poster-fade-top {
+    pointer-events: none;
+    height: 28%;
+    position: absolute;
+    left: 0px;
+    right: 0px;
+    background: linear-gradient(rgb(5, 7, 10) 0%, rgba(0, 0, 0, 0) 100%);
+    top: 0px;
+    z-index: 5;
+  }
+
+  .poster-fade-bottom {
+    pointer-events: none;
+    height: 28%;
+    position: absolute;
+    left: 0px;
+    right: 0px;
+    background: linear-gradient(rgba(0, 0, 0, 0) 0%, rgb(5, 7, 10) 100%);
+    bottom: 0px;
+    z-index: 5;
+  }
+
+  .poster-fade-left {
+    pointer-events: none;
+    width: 7rem;
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    background: linear-gradient(to right, rgb(5, 7, 10) 0%, rgba(5, 7, 10, 0.7) 40%, rgba(0, 0, 0, 0) 100%);
+    z-index: 6;
+  }
+
+  .poster-fade-right {
+    pointer-events: none;
+    width: 7rem;
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    right: 0px;
+    background: linear-gradient(to left, rgb(5, 7, 10) 0%, rgba(5, 7, 10, 0.7) 40%, rgba(0, 0, 0, 0) 100%);
+    z-index: 6;
+  }
+
+
+  @keyframes poster-marquee-vertical {
+    0% {
+      transform: translateY(0px);
+    }
+    100% {
+      transform: translateY(calc(-100% - 0.7rem));
+    }
   }
 }

@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useActiveProfile } from "@/hooks/useActiveProfile";
 import {
   AntennaIcon,
   ClapperboardIcon,
@@ -34,6 +35,7 @@ const CONTENT_LINKS = [
 export function Dock({ onOpenSearch, onOpenAccount }: DockProps) {
   const router = useRouter();
   const { user, openAuthModal } = useAuth();
+  const { activeProfile } = useActiveProfile();
   const [isBrowseOpen, setIsBrowseOpen] = useState(false);
   const browseRef = useRef<HTMLDivElement>(null);
 
@@ -250,11 +252,11 @@ export function Dock({ onOpenSearch, onOpenAccount }: DockProps) {
         >
           <div className="pointer-events-none flex items-center justify-center">
             {user ? (
-              user.avatarUrl ? (
+              (activeProfile?.avatarUrl || user.avatarUrl) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={user.avatarUrl}
-                  alt={user.displayName || user.email}
+                  src={activeProfile?.avatarUrl || user.avatarUrl || "/avatar/classic-1.png"}
+                  alt={activeProfile?.name || user.displayName || user.email}
                   className="h-6 w-6 rounded-full object-cover"
                 />
               ) : (

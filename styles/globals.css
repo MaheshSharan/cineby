@@ -5,24 +5,24 @@
 @layer base {
   :root {
     --radius: 0.5rem;
-    --background: 214 30% 3%;
-    --foreground: 220 22% 95%;
-    --card: 215 28% 5%;
-    --card-foreground: 220 22% 95%;
-    --popover: 215 28% 6%;
-    --popover-foreground: 220 22% 95%;
+    --background: 0 0% 2%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 98%;
     --primary: 0 72% 51%;
-    --primary-foreground: 220 25% 10%;
-    --secondary: 215 30% 8%;
-    --secondary-foreground: 220 22% 95%;
-    --muted: 215 25% 12%;
-    --muted-foreground: 218 13% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 7%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 65%;
     --accent: 0 72% 51%;
-    --accent-foreground: 220 25% 10%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 216 24% 15%;
-    --input: 216 24% 15%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
     --ring: 0 72% 51%;
   }
 
@@ -48,12 +48,12 @@
 
   ::-webkit-scrollbar-thumb {
     border: 1px solid rgb(25, 26, 31);
-    background: rgb(102, 102, 102);
+    background: rgb(80, 80, 80);
     border-radius: 16px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(119, 119, 119);
+    background: rgb(110, 110, 110);
   }
 
   ::-webkit-scrollbar-button {
@@ -88,19 +88,22 @@
   }
 
   .glass-card {
-    background: rgba(11, 15, 20, 0.5);
-    border: 1px solid rgba(238, 241, 246, 0.08);
+    background: rgba(8, 8, 8, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
   .glass-card-subtle {
-    background: rgba(24, 24, 24, 0.55);
+    background: rgba(14, 14, 14, 0.65);
     backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   .glass-card-dark {
-    background: rgba(5, 7, 10, 0.85);
+    background: rgba(0, 0, 0, 0.88);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 
   .text-shadow-hero {
@@ -121,13 +124,15 @@
     flex-shrink: 0;
   }
 
-  /* ---- Player surface ---- */
+  /* ---- Player surface (Pure black with subtle glassmorphism) ---- */
   .player-surface {
-    background: linear-gradient(180deg, #171a1f 0%, #0f1115 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(10, 10, 10, 0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow:
-      rgba(255, 255, 255, 0.04) 0px 1px 0px inset,
-      rgba(0, 0, 0, 0.55) 0px 6px 14px -6px;
+      rgba(255, 255, 255, 0.03) 0px 1px 0px inset,
+      rgba(0, 0, 0, 0.75) 0px 12px 32px -4px;
   }
 
   .player-tile {

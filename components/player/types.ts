@@ -40,7 +40,10 @@ export interface PlayerMedia {
   backdropPath?: string | null;
   seasonNumber?: number | null;
   episodeNumber?: number | null;
+  episodeName?: string | null;
   duration?: string | null;
+  runtime?: number | null;
+  releaseYear?: string | null;
   progress?: number | null;
   seasons?: PlayerSeason[];
 }

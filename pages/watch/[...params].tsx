@@ -6,7 +6,7 @@ import { getMovieDetails, getTvDetails } from "@/lib/tmdb/server";
 import type { TvDetails } from "@/lib/tmdb";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { listHistory } from "@/lib/db/history";
-import { getEpisodeHref } from "@/lib/utils/media";
+import { formatRuntime, getEpisodeHref, getYear } from "@/lib/utils/media";
 
 import { PlayerShell } from "@/components/player/PlayerShell";
 import type { PlayerMedia, PlayerSeason } from "@/components/player/types";
@@ -69,10 +69,14 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
         episode = episode ?? 1;
       }
 
+      const duration = details.episodeRunTime?.[0]
+        ? formatRuntime(details.episodeRunTime[0])
+        : undefined;
+
       return {
         props: {
           title: details.title,
-          subtitle: `S:${season} E:${episode}`,
+          subtitle: `S${season} E${episode}`,
           media: {
             mediaType,
             mediaId: details.id,
@@ -81,6 +85,9 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
             backdropPath: details.backdropPath,
             seasonNumber: season,
             episodeNumber: episode,
+            duration,
+            runtime: details.episodeRunTime?.[0] ?? null,
+            releaseYear: getYear(details.releaseDate),
             seasons: toPlayerSeasons(details.seasons),
           },
         },
@@ -88,17 +95,22 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
     }
 
     const details = await getMovieDetails(id);
+    const duration = details.runtime ? formatRuntime(details.runtime) : undefined;
+    const releaseYear = getYear(details.releaseDate);
 
     return {
       props: {
         title: details.title,
-        subtitle: details.releaseDate ? details.releaseDate.slice(0, 4) : undefined,
+        subtitle: releaseYear || undefined,
         media: {
           mediaType,
           mediaId: details.id,
           title: details.title,
           posterPath: details.posterPath,
           backdropPath: details.backdropPath,
+          duration,
+          runtime: details.runtime ?? null,
+          releaseYear,
         },
       },
     };

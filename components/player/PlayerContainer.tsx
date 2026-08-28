@@ -6,16 +6,18 @@ import { HISTORY_SAVE_INTERVAL_MS, SERVERS } from "./constants";
 import { createMediaEngine, type MediaEngine } from "./media";
 import { resolveStream } from "./providers";
 import { getSeasonEpisodes } from "@/lib/api/episodes";
+import { formatRuntime } from "@/lib/utils/media";
 
 import { usePlayerControls } from "./hooks/usePlayerControls";
 import { usePlayerState } from "./hooks/usePlayerState";
 import { useSubtitles } from "./hooks/useSubtitles";
 
+import { AudioSubtitlesPopover, DEFAULT_SUBTITLE_APPEARANCE, type SubtitleAppearance } from "./ui/AudioSubtitlesPopover";
 import { EpisodesDrawer } from "./ui/EpisodesDrawer";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
 import { PlayerControls } from "./ui/PlayerControls";
 import { PlayerHeader } from "./ui/PlayerHeader";
-import { SettingsModal, type SettingsTab } from "./ui/SettingsModal";
+import { QualityPopover } from "./ui/QualityPopover";
 
 interface PlayerContainerProps {
   media: PlayerMedia;
@@ -56,6 +58,9 @@ export function PlayerContainer({
   const requestIdRef = useRef(0);
   const endedRef = useRef(false);
 
+  const qualityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const [settings, setSettings] = useState<PlayerSettings>({
     volume: 0.8,
     muted: false,
@@ -70,9 +75,12 @@ export function PlayerContainer({
   const [isResolvingStream, setIsResolvingStream] = useState(true);
   const [availableSources, setAvailableSources] = useState<MediaSource[]>([]);
   const [availableSubtitles, setAvailableSubtitles] = useState<SubtitleTrack[]>([]);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("quality");
+
+  // Modals and Popovers state
+  const [isQualityOpen, setIsQualityOpen] = useState(false);
+  const [isAudioSubtitlesOpen, setIsAudioSubtitlesOpen] = useState(false);
   const [isEpisodesOpen, setIsEpisodesOpen] = useState(false);
+  const [appearance, setAppearance] = useState<SubtitleAppearance>(DEFAULT_SUBTITLE_APPEARANCE);
 
   const isTv = media.mediaType === "tv";
   const seasons = useMemo<PlayerSeason[]>(() => media.seasons ?? [], [media.seasons]);
@@ -100,7 +108,6 @@ export function PlayerContainer({
       return false;
     }
 
-    // Last episode of this season; only "no next" if there is no later season with episodes.
     const hasNextSeason = seasons.some(
       (season) => season.seasonNumber > currentSeason && season.episodeCount > 0
     );
@@ -109,36 +116,58 @@ export function PlayerContainer({
 
   const hasNext = isTv && currentSeasonEpisodes.length > 0 && !isLastEpisode;
 
-  // Fetch episodes for the season shown in the drawer
+  // Fetch episodes for current and drawer seasons
   useEffect(() => {
     if (!isTv) {
       return;
     }
 
-    if (episodesBySeason[drawerSeason]) {
+    const seasonsToLoad = [currentSeason, drawerSeason].filter(
+      (s, idx, arr) => arr.indexOf(s) === idx && !episodesBySeason[s]
+    );
+
+    if (seasonsToLoad.length === 0) {
       return;
     }
 
     let isCurrent = true;
     setIsEpisodesLoading(true);
 
-    getSeasonEpisodes(media.mediaId, drawerSeason)
-      .then((data) => {
-        if (!isCurrent) return;
-        const mapped: Episode[] = data.episodes.map((episode) => ({
-          id: episode.id,
-          seasonNumber: episode.seasonNumber,
-          episodeNumber: episode.episodeNumber,
-          name: episode.name,
-          overview: episode.overview,
-          stillPath: episode.stillPath,
-          runtime: episode.runtime,
-          airDate: episode.airDate,
-          voteAverage: episode.voteAverage,
-        }));
-        setEpisodesBySeason((prev) => ({ ...prev, [drawerSeason]: mapped }));
+    Promise.all(
+      seasonsToLoad.map(async (s) => {
+        try {
+          const data = await getSeasonEpisodes(media.mediaId, s);
+          return {
+            season: s,
+            episodes: data.episodes.map((episode) => ({
+              id: episode.id,
+              seasonNumber: episode.seasonNumber,
+              episodeNumber: episode.episodeNumber,
+              name: episode.name,
+              overview: episode.overview,
+              stillPath: episode.stillPath,
+              runtime: episode.runtime,
+              airDate: episode.airDate,
+              voteAverage: episode.voteAverage,
+            })),
+          };
+        } catch {
+          return null;
+        }
       })
-      .catch(() => {})
+    )
+      .then((results) => {
+        if (!isCurrent) return;
+        const updates: Record<number, Episode[]> = {};
+        for (const res of results) {
+          if (res) {
+            updates[res.season] = res.episodes;
+          }
+        }
+        if (Object.keys(updates).length > 0) {
+          setEpisodesBySeason((prev) => ({ ...prev, ...updates }));
+        }
+      })
       .finally(() => {
         if (isCurrent) {
           setIsEpisodesLoading(false);
@@ -148,27 +177,63 @@ export function PlayerContainer({
     return () => {
       isCurrent = false;
     };
-  }, [drawerSeason, episodesBySeason, isTv, media.mediaId]);
+  }, [currentSeason, drawerSeason, episodesBySeason, isTv, media.mediaId]);
+
+  const currentEpisodeData = useMemo(() => {
+    if (!isTv) return null;
+    const episodes = episodesBySeason[currentSeason] ?? [];
+    return episodes.find((episode) => episode.episodeNumber === currentEpisode) ?? null;
+  }, [isTv, episodesBySeason, currentSeason, currentEpisode]);
+
+  const computedHeaderSubtitle = useMemo(() => {
+    if (isTv) {
+      const episodePrefix = `S${currentSeason} E${currentEpisode}`;
+      const episodeName = currentEpisodeData?.name ?? media.episodeName ?? "";
+      const runtimeMinutes = currentEpisodeData?.runtime ?? media.runtime ?? null;
+      const durationStr = runtimeMinutes
+        ? formatRuntime(runtimeMinutes)
+        : media.duration ?? "";
+
+      const titlePart = episodeName ? `${episodePrefix} ${episodeName}` : episodePrefix;
+      if (durationStr) {
+        return `${titlePart} · ${durationStr}`;
+      }
+      return titlePart;
+    }
+
+    const year = media.releaseYear ?? "";
+    const runtimeMinutes = media.runtime ?? null;
+    const durationStr = runtimeMinutes
+      ? formatRuntime(runtimeMinutes)
+      : media.duration ?? "";
+
+    if (year && durationStr) {
+      return `${year} · ${durationStr}`;
+    }
+    if (durationStr) {
+      return durationStr;
+    }
+    if (year) {
+      return year;
+    }
+    return subtitle ?? "";
+  }, [
+    isTv,
+    currentSeason,
+    currentEpisode,
+    currentEpisodeData,
+    media.episodeName,
+    media.runtime,
+    media.duration,
+    media.releaseYear,
+    subtitle,
+  ]);
 
   const playerState = usePlayerState({
     videoRef,
     autoPlay: true,
   });
   const { setRate } = playerState;
-
-  const controls = usePlayerControls({
-    onTogglePlay: playerState.togglePlay,
-    onSeekBy: playerState.seekBy,
-    onToggleMute: playerState.toggleMute,
-    onToggleFullscreen: toggleFullscreen,
-    onToggleSettings: () => setIsSettingsOpen((open) => !open),
-    onToggleSubtitles: () => {
-      setSettingsTab("subtitles");
-      setIsSettingsOpen(true);
-    },
-  });
-
-  const subtitles = useSubtitles({ videoRef });
 
   function toggleFullscreen() {
     const element = containerRef.current;
@@ -180,6 +245,51 @@ export function PlayerContainer({
       void element.requestFullscreen();
     }
   }
+
+  const handleQualityMouseEnter = () => {
+    if (qualityTimerRef.current) clearTimeout(qualityTimerRef.current);
+    if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
+    setIsAudioSubtitlesOpen(false);
+    setIsQualityOpen(true);
+  };
+
+  const handleQualityMouseLeave = () => {
+    if (qualityTimerRef.current) clearTimeout(qualityTimerRef.current);
+    qualityTimerRef.current = setTimeout(() => {
+      setIsQualityOpen(false);
+    }, 150);
+  };
+
+  const handleAudioMouseEnter = () => {
+    if (qualityTimerRef.current) clearTimeout(qualityTimerRef.current);
+    if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
+    setIsQualityOpen(false);
+    setIsAudioSubtitlesOpen(true);
+  };
+
+  const handleAudioMouseLeave = () => {
+    if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
+    audioTimerRef.current = setTimeout(() => {
+      setIsAudioSubtitlesOpen(false);
+    }, 150);
+  };
+
+  const controls = usePlayerControls({
+    onTogglePlay: playerState.togglePlay,
+    onSeekBy: playerState.seekBy,
+    onToggleMute: playerState.toggleMute,
+    onToggleFullscreen: toggleFullscreen,
+    onToggleSettings: () => {
+      setIsAudioSubtitlesOpen(false);
+      setIsQualityOpen((open) => !open);
+    },
+    onToggleSubtitles: () => {
+      setIsQualityOpen(false);
+      setIsAudioSubtitlesOpen((open) => !open);
+    },
+  });
+
+  const subtitles = useSubtitles({ videoRef });
 
   const loadStream = useCallback(
     async (serverId: string) => {
@@ -232,26 +342,24 @@ export function PlayerContainer({
 
       endedRef.current = false;
       setStream({ source, isError: false });
-      void element.play().catch(() => {
-        // Autoplay can be blocked by browser policy; the visible play control
-        // remains available without turning a policy decision into an error.
-      });
+      void element.play().catch(() => {});
     },
     [media.mediaType, media.mediaId, media.seasonNumber, media.episodeNumber]
   );
 
-  // Load initial stream when serverId changes
   useEffect(() => {
     void loadStream(settings.serverId);
   }, [loadStream, settings.serverId]);
 
-  // Cleanup media engine + blob URLs
   useEffect(() => {
     const onUnmount = () => {
       streamRequestControllerRef.current?.abort();
       streamRequestControllerRef.current = null;
       mediaEngineRef.current?.destroy();
       mediaEngineRef.current = null;
+
+      if (qualityTimerRef.current) clearTimeout(qualityTimerRef.current);
+      if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
 
       const video = videoRef.current;
       if (video) {
@@ -267,14 +375,12 @@ export function PlayerContainer({
     };
   }, []);
 
-  // Quality changes flow into the media engine
   useEffect(() => {
     if (mediaEngineRef.current && "setQuality" in mediaEngineRef.current) {
       mediaEngineRef.current.setQuality(settings.quality);
     }
   }, [settings.quality]);
 
-  // History: save progress every N seconds once playing
   useEffect(() => {
     if (!stream.source) {
       return;
@@ -288,22 +394,23 @@ export function PlayerContainer({
     return () => window.clearInterval(interval);
   }, [stream.source, onTimeUpdate]);
 
-  // Close open modals with Escape
+  // Close open popovers with Escape
   useEffect(() => {
-    if (!isSettingsOpen && !isEpisodesOpen) {
+    if (!isQualityOpen && !isAudioSubtitlesOpen && !isEpisodesOpen) {
       return;
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsSettingsOpen(false);
+        setIsQualityOpen(false);
+        setIsAudioSubtitlesOpen(false);
         setIsEpisodesOpen(false);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isSettingsOpen, isEpisodesOpen]);
+  }, [isQualityOpen, isAudioSubtitlesOpen, isEpisodesOpen]);
 
   const handleToggleAutoNext = useCallback(() => {
     setSettings((current) => ({ ...current, autoNext: !current.autoNext }));
@@ -330,7 +437,6 @@ export function PlayerContainer({
       return;
     }
 
-    // Last episode of this season — jump to the next season's first episode if one exists.
     const nextSeason = seasons.find(
       (season) => season.seasonNumber > currentSeason && season.episodeCount > 0
     );
@@ -339,7 +445,6 @@ export function PlayerContainer({
     }
   }, [activeSeasonInfo, currentEpisode, currentSeason, handleNavigate, seasons]);
 
-  // Auto-next on ended
   useEffect(() => {
     if (!playerState.isEnded) {
       return;
@@ -357,13 +462,9 @@ export function PlayerContainer({
     }
   }, [playerState.isEnded, settings.autoNext, hasNext, isLastEpisode, handleNextEpisode, onEnded]);
 
-  const handleSeasonChange = useCallback(
-    (seasonNumber: number) => {
-      setDrawerSeason(seasonNumber);
-      setIsEpisodesOpen(true);
-    },
-    []
-  );
+  const handleSeasonChange = useCallback((seasonNumber: number) => {
+    setDrawerSeason(seasonNumber);
+  }, []);
 
   const handleEpisodeSelect = useCallback(
     (episode: Episode) => {
@@ -380,10 +481,28 @@ export function PlayerContainer({
     setSettings((current) => ({ ...current, quality }));
   }, []);
 
-  const handleRateChange = useCallback((rate: PlayerSettings["rate"]) => {
-    setSettings((current) => ({ ...current, rate }));
-    setRate(rate);
-  }, [setRate]);
+  const handleRateChange = useCallback(
+    (rate: PlayerSettings["rate"]) => {
+      setSettings((current) => ({ ...current, rate }));
+      setRate(rate);
+    },
+    [setRate]
+  );
+
+  const handleUploadSubtitle = useCallback(
+    (file: File) => {
+      const url = URL.createObjectURL(file);
+      const customTrack: SubtitleTrack = {
+        id: `custom-${Date.now()}`,
+        lang: "custom",
+        label: file.name.replace(/\.[^/.]+$/, ""),
+        url,
+      };
+      setAvailableSubtitles((prev) => [customTrack, ...prev]);
+      subtitles.selectTrack(customTrack);
+    },
+    [subtitles]
+  );
 
   const serverOptions = useMemo<ServerOption[]>(() => {
     const list = [...SERVERS];
@@ -409,7 +528,17 @@ export function PlayerContainer({
   const isLoading = isResolvingStream && !stream.source;
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black">
+    <div ref={containerRef} className="fixed inset-0 bg-black overflow-hidden select-none">
+      {/* Subtitle Appearance Dynamic Cue Style */}
+      <style jsx global>{`
+        video::cue {
+          color: ${appearance.color} !important;
+          background-color: rgba(0, 0, 0, ${appearance.bgOpacity}) !important;
+          font-size: ${appearance.fontSize}px !important;
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9) !important;
+        }
+      `}</style>
+
       <div className="flex h-full w-full">
         <div className="cineby-container relative top-0 left-0 w-full h-full flex justify-center items-center">
           {/* Video */}
@@ -423,37 +552,204 @@ export function PlayerContainer({
             />
           </div>
 
-          {/* Top header */}
-          <PlayerHeader onBack={onBack} visible={controls.areControlsVisible} />
+          {/* Top Header Bar */}
+          <PlayerHeader
+            title={media.title}
+            subtitle={computedHeaderSubtitle}
+            onBack={onBack}
+            visible={controls.areControlsVisible}
+            rightSlot={
+              <div className="flex items-center gap-1 md:gap-4 flex-shrink-0 relative">
+                {/* Quality Button with Hover/Click Popover */}
+                <div
+                  className="relative"
+                  onMouseEnter={handleQualityMouseEnter}
+                  onMouseLeave={handleQualityMouseLeave}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAudioSubtitlesOpen(false);
+                      setIsQualityOpen((prev) => !prev);
+                    }}
+                    className={`tabbable flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg text-white/90 hover:text-white hover:bg-white/10 transition-all text-sm font-semibold ${
+                      isQualityOpen ? "bg-white/20 text-white" : ""
+                    }`}
+                  >
+                    <svg
+                      className="w-6 h-6 flex-shrink-0"
+                      strokeWidth="1.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      color="currentColor"
+                    >
+                      <path
+                        d="M14 12L10.5 14V10L14 12Z"
+                        fill="currentColor"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M2 12.7075V11.2924C2 8.39705 2 6.94939 2.90549 6.01792C3.81099 5.08645 5.23656 5.04613 8.08769 4.96549C9.43873 4.92728 10.8188 4.8999 12 4.8999C13.1812 4.8999 14.5613 4.92728 15.9123 4.96549C18.7634 5.04613 20.189 5.08645 21.0945 6.01792C22 6.94939 22 8.39705 22 11.2924V12.7075C22 15.6028 22 17.0505 21.0945 17.9819C20.189 18.9134 18.7635 18.9537 15.9124 19.0344C14.5613 19.0726 13.1812 19.1 12 19.1C10.8188 19.1 9.43867 19.0726 8.0876 19.0344C5.23651 18.9537 3.81097 18.9134 2.90548 17.9819C2 17.0505 2 15.6028 2 12.7075Z"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+                    <span className="hidden md:inline">Quality</span>
+                    <span className="hidden md:inline opacity-50 font-normal">
+                      {settings.quality ?? "1080p"}
+                    </span>
+                  </button>
 
-          {/* Playback status indicator. It must never cover or block player controls. */}
+                  <QualityPopover
+                    open={isQualityOpen}
+                    quality={settings.quality}
+                    onQualityChange={handleQualityChange}
+                    servers={serverOptions}
+                    activeServerId={settings.serverId}
+                    onServerChange={handleServerChange}
+                    rate={settings.rate}
+                    onRateChange={handleRateChange}
+                  />
+                </div>
+
+                {/* Audio & Subtitles Button with Hover/Click Popover */}
+                <div
+                  className="relative"
+                  onMouseEnter={handleAudioMouseEnter}
+                  onMouseLeave={handleAudioMouseLeave}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQualityOpen(false);
+                      setIsAudioSubtitlesOpen((prev) => !prev);
+                    }}
+                    className={`tabbable flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg text-white/90 hover:text-white hover:bg-white/10 transition-all text-sm font-semibold ${
+                      isAudioSubtitlesOpen ? "bg-white/20 text-white" : ""
+                    }`}
+                  >
+                    <svg
+                      className="w-6 h-6 flex-shrink-0"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.5"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      color="currentColor"
+                    >
+                      <path
+                        d="M1 15V9C1 5.68629 3.68629 3 7 3H17C20.3137 3 23 5.68629 23 9V15C23 18.3137 20.3137 21 17 21H7C3.68629 21 1 18.3137 1 15Z"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                      <path
+                        d="M10.5 10L10.3284 9.82843C9.79799 9.29799 9.07857 9 8.32843 9C6.76633 9 5.5 10.2663 5.5 11.8284V12.1716C5.5 13.7337 6.76633 15 8.32843 15C9.07857 15 9.79799 14.702 10.3284 14.1716L10.5 14"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M18.5 10L18.3284 9.82843C17.798 9.29799 17.0786 9 16.3284 9C14.7663 9 13.5 10.2663 13.5 11.8284V12.1716C13.5 13.7337 14.7663 15 16.3284 15C17.0786 15 17.798 14.702 18.3284 14.1716L18.5 14"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span className="hidden md:inline">Audio &amp; Subtitles</span>
+                  </button>
+
+                  <AudioSubtitlesPopover
+                    open={isAudioSubtitlesOpen}
+                    subtitleTracks={availableSubtitles}
+                    activeSubtitleId={subtitles.activeTrack?.id}
+                    onSubtitleChange={subtitles.selectTrack}
+                    onUploadSubtitle={handleUploadSubtitle}
+                    appearance={appearance}
+                    onAppearanceChange={setAppearance}
+                  />
+                </div>
+
+                {/* Next Episode Button in Header (TV only) */}
+                {isTv && hasNext ? (
+                  <button
+                    type="button"
+                    onClick={handleNextEpisode}
+                    className="tabbable flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-lg text-white/90 hover:text-white hover:bg-white/10 transition-all text-sm font-semibold"
+                  >
+                    <svg
+                      className="w-6 h-6 flex-shrink-0"
+                      strokeWidth="1.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      color="currentColor"
+                    >
+                      <path
+                        d="M18 7V17"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M6.97179 5.2672C6.57832 4.95657 6 5.23682 6 5.73813V18.2619C6 18.7632 6.57832 19.0434 6.97179 18.7328L14.9035 12.4709C15.2078 12.2307 15.2078 11.7693 14.9035 11.5291L6.97179 5.2672Z"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <span className="hidden md:inline">Next Episode</span>
+                  </button>
+                ) : null}
+              </div>
+            }
+          />
+
+          {/* Buffering Indicator */}
           {isLoading || playerState.isBuffering ? (
             <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
               <LoadingSpinner label={null} className="gap-0 [&>svg]:h-7 [&>svg]:w-7" />
             </div>
           ) : null}
 
-          {/* Stream error */}
+          {/* Stream Error Toast */}
           {stream.isError ? (
-            <div className="absolute inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center gap-4 px-6 text-center">
-              <p className="text-lg font-semibold text-white">Unable to play this source</p>
-              <p className="max-w-md text-sm text-white/60">
-                Try selecting a different server from the settings menu.
-              </p>
+            <div
+              data-player-ui
+              className="absolute bottom-28 left-1/2 -translate-x-1/2 z-[60] player-surface rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-4 max-w-md w-[calc(100%-2rem)] animate-in fade-in slide-in-from-bottom-4 duration-300"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white">Unable to play this source</p>
+                <p className="text-xs text-white/50 mt-0.5">Try a different server from Quality menu.</p>
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   setStream({ source: null, isError: false });
                   void loadStream(settings.serverId);
                 }}
-                className="mt-2 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                className="flex-shrink-0 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-white/90 cursor-pointer"
               >
                 Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => setStream((prev) => ({ ...prev, isError: false }))}
+                aria-label="Dismiss"
+                className="flex-shrink-0 p-1 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           ) : null}
 
-          {/* Bottom controls */}
+          {/* Bottom Controls Bar */}
           <PlayerControls
             visible={controls.areControlsVisible}
             isPlaying={playerState.isPlaying}
@@ -461,166 +757,62 @@ export function PlayerContainer({
             duration={playerState.duration}
             volume={playerState.volume}
             muted={playerState.muted}
-            title={media.title}
-            subtitle={subtitle}
             onTogglePlay={playerState.togglePlay}
             onSeek={playerState.seekTo}
             onSeekBy={playerState.seekBy}
             onVolumeChange={playerState.setVolume}
             onToggleMute={playerState.toggleMute}
             onToggleFullscreen={toggleFullscreen}
-            onOpenSettings={() => {
-              if (isSettingsOpen && settingsTab === "quality") {
-                setIsSettingsOpen(false);
-                return;
-              }
-              setSettingsTab("quality");
-              setIsSettingsOpen(true);
-            }}
-            onToggleSubtitles={() => {
-              if (isSettingsOpen && settingsTab === "subtitles") {
-                setIsSettingsOpen(false);
-                return;
-              }
-              setSettingsTab("subtitles");
-              setIsSettingsOpen(true);
-            }}
-          >
-            {isTv ? (
-              <>
-                {hasNext ? (
-                  <NextEpisodeButton onNext={handleNextEpisode} />
-                ) : null}
-                <EpisodeSelectorButton
-                  onOpen={() => setIsEpisodesOpen((open) => !open)}
-                />
-              </>
-            ) : null}
-          </PlayerControls>
-
-          {/* Settings modal dim layer — always mounted, opacity-toggled */}
-          <div
-            data-player-ui
-            className={`absolute inset-0 z-[100] bg-black/70 transition-opacity duration-500 ${
-              isSettingsOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-            }`}
-            onClick={() => setIsSettingsOpen(false)}
-            aria-hidden="true"
+            centerSlot={
+              isTv ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEpisodesOpen(true)}
+                  aria-label="Episodes"
+                  className="tabbable group flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-semibold backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <span>Episodes</span>
+                  <svg
+                    className={`w-3.5 h-3.5 text-gray-300 transition-transform duration-200 ${
+                      isEpisodesOpen ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+              ) : null
+            }
           />
 
-          {/* Settings modal */}
-          <SettingsModal
-            open={isSettingsOpen}
-            activeTab={settingsTab}
-            onTabChange={setSettingsTab}
-            onClose={() => setIsSettingsOpen(false)}
-            quality={settings.quality}
-            onQualityChange={handleQualityChange}
-            subtitleTracks={availableSubtitles}
-            subtitleLabel={subtitles.activeLabel}
-            onSubtitleChange={subtitles.selectTrack}
-            servers={serverOptions}
-            activeServerId={settings.serverId}
-            onServerChange={handleServerChange}
-            rate={settings.rate}
-            onRateChange={handleRateChange}
-          />
-
-          {/* Episodes drawer (TV only) */}
+          {/* Episodes Modal (TV only) */}
           {isTv ? (
-            <>
-              {/* Episodes drawer dim layer — always mounted, opacity-toggled */}
-              <div
-                data-player-ui
-                className={`absolute inset-0 z-[100] bg-black/70 transition-opacity duration-500 ${
-                  isEpisodesOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-                }`}
-                onClick={() => setIsEpisodesOpen(false)}
-                aria-hidden="true"
-              />
-              <EpisodesDrawer
-                open={isEpisodesOpen}
-                onClose={() => setIsEpisodesOpen(false)}
-                seasons={seasons.map((season) => ({
-                  seasonNumber: season.seasonNumber,
-                  name: season.name,
-                  episodeCount: season.episodeCount,
-                  overview: season.overview,
-                }))}
-                episodes={drawerEpisodes}
-                selectedSeason={drawerSeason}
-                onSeasonChange={handleSeasonChange}
-                onEpisodeSelect={handleEpisodeSelect}
-                activeEpisodeId={
-                  drawerSeason === currentSeason
-                    ? drawerEpisodes.find(
-                        (episode) => episode.episodeNumber === currentEpisode
-                      )?.id
-                    : undefined
-                }
-                isLoading={isEpisodesLoading}
-                autoNext={settings.autoNext}
-                onToggleAutoNext={handleToggleAutoNext}
-              />
-            </>
+            <EpisodesDrawer
+              open={isEpisodesOpen}
+              onClose={() => setIsEpisodesOpen(false)}
+              title={media.title}
+              seasons={seasons.map((season) => ({
+                seasonNumber: season.seasonNumber,
+                name: season.name,
+                episodeCount: season.episodeCount,
+                overview: season.overview,
+              }))}
+              episodes={drawerEpisodes}
+              selectedSeason={drawerSeason}
+              onSeasonChange={handleSeasonChange}
+              onEpisodeSelect={handleEpisodeSelect}
+              activeEpisodeNumber={currentEpisode}
+              activeSeasonNumber={currentSeason}
+              isLoading={isEpisodesLoading}
+              autoNext={settings.autoNext}
+              onToggleAutoNext={handleToggleAutoNext}
+            />
           ) : null}
         </div>
       </div>
     </div>
-  );
-}
-
-function NextEpisodeButton({ onNext }: { onNext: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onNext}
-      aria-label="Next episode"
-      title="Next episode"
-      className="tabbable p-2 rounded-full hover:bg-white/20 transition-transform duration-100 flex items-center gap-3 active:scale-110 active:bg-white/30 active:text-white"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="1.25em"
-        height="1.25em"
-        viewBox="0 0 18 18"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          fill="currentColor"
-          d="M14.625 2.8125V15.1875C14.625 15.3367 14.5657 15.4798 14.4602 15.5852C14.3548 15.6907 14.2117 15.75 14.0625 15.75C13.9133 15.75 13.7702 15.6907 13.6648 15.5852C13.5593 15.4798 13.5 15.3367 13.5 15.1875V10.3198L5.09273 15.5777C4.92342 15.684 4.72878 15.7431 4.52895 15.7489C4.32913 15.7547 4.13139 15.707 3.95621 15.6107C3.78102 15.5144 3.63477 15.373 3.53258 15.2012C3.43039 15.0294 3.37599 14.8333 3.375 14.6334V3.36656C3.37599 3.16666 3.43039 2.97065 3.53258 2.79883C3.63477 2.62702 3.78102 2.48564 3.95621 2.38933C4.13139 2.29303 4.32913 2.2453 4.52895 2.25109C4.72878 2.25688 4.92342 2.31598 5.09273 2.42227L13.5 7.68023V2.8125C13.5 2.66332 13.5593 2.52024 13.6648 2.41475C13.7702 2.30926 13.9133 2.25 14.0625 2.25C14.2117 2.25 14.3548 2.30926 14.4602 2.41475C14.5657 2.52024 14.625 2.66332 14.625 2.8125Z"
-        />
-      </svg>
-    </button>
-  );
-}
-
-function EpisodeSelectorButton({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label="Episodes"
-      title="Episodes"
-      className="tabbable p-2 rounded-full hover:bg-white/20 transition-transform duration-100 flex items-center gap-3 active:scale-110 active:bg-white/30 active:text-white"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="1.25em"
-        height="1.25em"
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          fillRule="evenodd"
-          clipRule="evenodd"
-          fill="currentColor"
-          d="M3 4C1.34315 4 0 5.34314 0 7V13.9496C0 15.6065 1.34315 16.9496 3 16.9496H5.86645V14.9496H3C2.44772 14.9496 2 14.5019 2 13.9496V7C2 6.44771 2.44771 6 3 6H16.0327C16.585 6 17.0327 6.44772 17.0327 7V9.86645H19.0327V7C19.0327 5.34315 17.6896 4 16.0327 4H3Z"
-        />
-        <rect x="5.89929" y="10.5444" width="17" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
-      </svg>
-    </button>
   );
 }

@@ -183,11 +183,17 @@ export function DetailPage({
   if (isPlaying) {
     const effectiveSeason = isTv ? seasonNumber ?? historyEpisode?.season ?? 1 : null;
     const effectiveEpisode = isTv ? episodeNumber ?? historyEpisode?.episode ?? 1 : null;
-    const playerSubtitle = isTv
-      ? `S:${effectiveSeason} E:${effectiveEpisode}`
-      : details.releaseDate
-      ? getYear(details.releaseDate) || undefined
+    const episodeDuration = isTv && "episodeRunTime" in details && details.episodeRunTime?.[0]
+      ? formatRuntime(details.episodeRunTime[0])
       : undefined;
+    const movieDuration = !isTv && "runtime" in details && details.runtime
+      ? formatRuntime(details.runtime)
+      : undefined;
+    const duration = episodeDuration ?? movieDuration ?? undefined;
+    const releaseYear = details.releaseDate ? getYear(details.releaseDate) : undefined;
+    const playerSubtitle = isTv
+      ? `S${effectiveSeason} E${effectiveEpisode}`
+      : releaseYear || undefined;
 
     return (
       <PlayerShell
@@ -201,6 +207,11 @@ export function DetailPage({
           backdropPath: details.backdropPath,
           seasonNumber: effectiveSeason,
           episodeNumber: effectiveEpisode,
+          duration,
+          runtime: isTv
+            ? ("episodeRunTime" in details ? details.episodeRunTime?.[0] ?? null : null)
+            : ("runtime" in details ? details.runtime ?? null : null),
+          releaseYear,
           seasons: isTv && "seasons" in details ? toPlayerSeasons(details.seasons) : undefined,
         }}
         onBack={() => router.push(getMediaHref(details.mediaType, details.id))}

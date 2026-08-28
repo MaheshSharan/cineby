@@ -11,17 +11,13 @@ interface PlayerControlsProps {
   duration: number;
   volume: number;
   muted: boolean;
-  title?: string;
-  subtitle?: string;
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
   onSeekBy: (seconds: number) => void;
   onVolumeChange: (volume: number) => void;
   onToggleMute: () => void;
   onToggleFullscreen: () => void;
-  onOpenSettings: () => void;
-  onToggleSubtitles: () => void;
-  children?: ReactNode;
+  centerSlot?: ReactNode;
 }
 
 export function PlayerControls({
@@ -31,27 +27,23 @@ export function PlayerControls({
   duration,
   volume,
   muted,
-  title,
-  subtitle,
   onTogglePlay,
   onSeek,
   onSeekBy,
   onVolumeChange,
   onToggleMute,
   onToggleFullscreen,
-  onOpenSettings,
-  onToggleSubtitles,
-  children,
+  centerSlot,
 }: PlayerControlsProps) {
   return (
     <div
       data-player-ui
       className={`absolute bottom-0 left-0 right-0 z-30 h-44 flex items-end pointer-events-auto transition-[opacity,transform] duration-300 ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
       }`}
     >
-      <div className="w-full flex flex-col items-stretch pb-3 pt-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-        <div className="px-4 md:px-8">
+      <div className="w-full flex flex-col items-stretch pb-4 pt-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+        <div className="px-4 md:px-10">
           {/* Seek row */}
           <div className="flex items-center gap-x-3">
             <div className="flex items-center flex-1">
@@ -66,23 +58,8 @@ export function PlayerControls({
 
           {/* Controls row */}
           <div className="relative flex items-center justify-between mt-2 md:mt-3">
-            {/* Centered title (does not affect side control layouts) */}
-            {title ? (
-              <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center">
-                <div className="min-w-0 max-w-[40%] text-center">
-                  <p className="truncate text-[13px] font-semibold text-white drop-shadow-md md:text-sm">
-                    {title}
-                  </p>
-                  {subtitle ? (
-                    <p className="truncate text-[11px] text-white/60 md:text-xs">
-                      {subtitle}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="flex space-x-3 items-center relative z-10">
+            {/* Left Controls: Play/Pause, Rewind, Forward, Volume */}
+            <div className="flex space-x-2 md:space-x-3 items-center relative z-10">
               {/* Play / Pause */}
               <button
                 type="button"
@@ -185,53 +162,15 @@ export function PlayerControls({
               />
             </div>
 
+            {/* Center Controls: Episodes selector pill */}
+            {centerSlot ? (
+              <div className="absolute inset-x-0 flex items-center justify-center pointer-events-none z-10">
+                <div className="pointer-events-auto">{centerSlot}</div>
+              </div>
+            ) : null}
+
+            {/* Right Controls: Fullscreen */}
             <div className="flex items-center gap-3 relative z-10">
-              {children}
-
-              {/* Subtitles */}
-              <button
-                type="button"
-                onClick={onToggleSubtitles}
-                aria-label="Subtitles"
-                title="Subtitles (c)"
-                className="tabbable p-2 rounded-full hover:bg-white/20 transition-transform duration-100 flex items-center gap-3 active:scale-110 active:bg-white/30 active:text-white"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="1.25em"
-                  height="1.25em"
-                  viewBox="0 0 25 20"
-                  aria-hidden="true"
-                >
-                  <path
-                    transform="translate(-3 -6)"
-                    fill="currentColor"
-                    d="M25.5,6H5.5A2.507,2.507,0,0,0,3,8.5v15A2.507,2.507,0,0,0,5.5,26h20A2.507,2.507,0,0,0,28,23.5V8.5A2.507,2.507,0,0,0,25.5,6ZM5.5,16h5v2.5h-5ZM18,23.5H5.5V21H18Zm7.5,0h-5V21h5Zm0-5H13V16H25.5Z"
-                  />
-                </svg>
-              </button>
-
-              {/* Settings */}
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                aria-label="Settings"
-                title="Settings (↑)"
-                className="tabbable p-2 rounded-full hover:bg-white/20 transition-transform duration-100 flex items-center gap-3 active:scale-110 active:bg-white/30 active:text-white"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  height="1.25em"
-                  width="1.25em"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path d="M0 0h24v24H0z" fill="none" />
-                  <path d="M19.43 12.98c.04-.32.07-.64.07-.98 0-.34-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98 0 .33.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" />
-                </svg>
-              </button>
-
               {/* Fullscreen */}
               <button
                 type="button"

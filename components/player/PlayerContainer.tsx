@@ -291,10 +291,19 @@ export function PlayerContainer({
 
   const subtitles = useSubtitles({ videoRef });
 
+  const currentMediaKey = `${media.mediaType}-${media.mediaId}-${media.seasonNumber ?? 0}-${media.episodeNumber ?? 0}`;
+  const lastMediaKeyRef = useRef<string>(currentMediaKey);
+
   const loadStream = useCallback(
     async (serverId: string) => {
       const element = videoRef.current;
       if (!element) return;
+
+      const isSameMedia = lastMediaKeyRef.current === currentMediaKey;
+      lastMediaKeyRef.current = currentMediaKey;
+
+      // Remember current playback position so changing servers resumes from the exact spot
+      const previousTime = isSameMedia && element.currentTime > 0 ? element.currentTime : 0;
 
       const requestId = ++requestIdRef.current;
       streamRequestControllerRef.current?.abort();
@@ -330,6 +339,11 @@ export function PlayerContainer({
         return;
       }
 
+      // Sync active serverId in settings to the actual source provider ID if it switched/fallback
+      if (source.id && source.id !== serverId) {
+        setSettings((prev) => ({ ...prev, serverId: source.id }));
+      }
+
       const format = source.format === "unknown" ? detectFormat(source.url) : source.format;
 
       if (mediaEngineRef.current) {
@@ -340,11 +354,30 @@ export function PlayerContainer({
       const engine = createMediaEngine(element, source.url, format);
       mediaEngineRef.current = engine;
 
+      // Restore playback position seamlessly from the exact spot
+      if (previousTime > 0) {
+        const restoreTime = () => {
+          try {
+            if (element.duration && previousTime < element.duration) {
+              element.currentTime = previousTime;
+            } else if (!element.duration) {
+              element.currentTime = previousTime;
+            }
+          } catch {}
+        };
+
+        if (element.readyState >= 1) {
+          restoreTime();
+        } else {
+          element.addEventListener("loadedmetadata", restoreTime, { once: true });
+        }
+      }
+
       endedRef.current = false;
       setStream({ source, isError: false });
       void element.play().catch(() => {});
     },
-    [media.mediaType, media.mediaId, media.seasonNumber, media.episodeNumber]
+    [media.mediaType, media.mediaId, media.seasonNumber, media.episodeNumber, currentMediaKey]
   );
 
   useEffect(() => {

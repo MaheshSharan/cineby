@@ -27,7 +27,7 @@ export default async function handler(
   const targetServer = typeof server === "string" && server.trim() ? server.trim() : undefined;
 
   try {
-    const result = await resolveAllStreams(
+    let result = await resolveAllStreams(
       {
         tmdbId: parsedTmdbId,
         type: mediaType,
@@ -36,6 +36,16 @@ export default async function handler(
       },
       { targetProviderId: targetServer }
     );
+
+    // If the requested server returned no streams, fall back to all available providers
+    if ((!result.sources || result.sources.length === 0) && targetServer) {
+      result = await resolveAllStreams({
+        tmdbId: parsedTmdbId,
+        type: mediaType,
+        season: seasonNum,
+        episode: episodeNum,
+      });
+    }
 
     return res.status(200).json(result);
   } catch {

@@ -30,6 +30,7 @@ export interface SubtitleTrack {
   lang: string;
   label: string;
   url: string | null;
+  flagUrl?: string;
 }
 
 export interface PlayerMedia {

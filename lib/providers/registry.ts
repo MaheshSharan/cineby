@@ -106,6 +106,8 @@ export async function resolveAllStreams(
           seenSubtitleLabels.add(key);
           collectedSubtitles.push({
             ...sub,
+            flagUrl: sub.flagUrl,
+            format: sub.format,
             url: buildStreamProxyUrl(sub.url, sub.headers),
           });
         }

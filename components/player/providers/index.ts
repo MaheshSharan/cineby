@@ -58,6 +58,7 @@ export async function resolveStream(
           lang: sub.lang || sub.label.toLowerCase().slice(0, 2),
           label: sub.label,
           url: sub.url,
+          flagUrl: sub.flagUrl,
         }));
 
         const selectedSource = mappedSources[0] ?? null;

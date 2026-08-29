@@ -34,7 +34,7 @@ export function useSubtitles({ videoRef }: UseSubtitlesOptions): UseSubtitlesRes
       }
 
       if (track?.url) {
-        // A custom WebVTT/ASS subtitle URL is applied by clearing any prior
+        // A custom WebVTT subtitle URL is applied by clearing any prior
         // <track> element and re-adding a fresh one.
         const existing = video?.querySelector("track");
         existing?.remove();
@@ -45,7 +45,24 @@ export function useSubtitles({ videoRef }: UseSubtitlesOptions): UseSubtitlesRes
         element.srclang = track.lang;
         element.src = track.url;
         element.default = true;
+
+        element.addEventListener("load", () => {
+          if (element.track) {
+            element.track.mode = "showing";
+          }
+        });
+
+        element.addEventListener("error", (e) => {
+          // Log subtitle load error if any
+          console.warn("[Player:Subtitles] Subtitle track failed to load:", track.url, e);
+        });
+
         video?.appendChild(element);
+
+        // Immediate track mode activation
+        if (element.track) {
+          element.track.mode = "showing";
+        }
       }
 
       setActiveTrack(track);

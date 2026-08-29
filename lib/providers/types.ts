@@ -36,6 +36,7 @@ export interface SubtitleTrack {
   url: string;
   label: string;
   lang?: string;
+  flagUrl?: string;
   format: "vtt" | "srt" | "ass" | "ssa";
   headers?: Record<string, string>;
 }

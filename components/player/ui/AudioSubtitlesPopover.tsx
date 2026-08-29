@@ -286,25 +286,44 @@ export function AudioSubtitlesPopover({
 
               {/* SUBTITLES COLUMN */}
               <div className="min-w-[140px] md:min-w-[170px] max-w-[240px] flex flex-col min-h-0 pl-4">
-                <p className="px-2.5 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500 flex-shrink-0">
-                  Subtitles
-                </p>
-                <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-0.5 pr-1">
-                  {/* Off Option */}
+                <div className="flex items-center justify-between px-2.5 pb-2.5 flex-shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">
+                    Subtitles
+                  </span>
+                  {/* Subtitle On/Off Switch Toggle */}
                   <button
                     type="button"
-                    onClick={() => onSubtitleChange(null)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-left transition-colors ${
-                      !activeSubtitleId
-                        ? "text-white bg-white/[0.14]"
-                        : "text-gray-300 hover:text-white hover:bg-white/[0.08]"
+                    role="switch"
+                    aria-checked={Boolean(activeSubtitleId)}
+                    aria-label="Toggle subtitles"
+                    onClick={() => {
+                      if (activeSubtitleId) {
+                        onSubtitleChange(null);
+                      } else if (subtitleTracks.length > 0) {
+                        const defaultSub =
+                          subtitleTracks.find(
+                            (s) => s.lang.toLowerCase() === "en" || s.label.toLowerCase().includes("english")
+                          ) ?? subtitleTracks[0];
+                        onSubtitleChange(defaultSub);
+                      }
+                    }}
+                    className={`group relative h-4 w-7 shrink-0 rounded-full border transition-all duration-200 cursor-pointer focus:outline-none ${
+                      activeSubtitleId
+                        ? "bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_8px_rgba(6,182,212,0.25)]"
+                        : "bg-white/[0.06] border-white/[0.1] hover:border-white/20"
                     }`}
                   >
-                    <span className="flex-1 min-w-0">
-                      <span className="block truncate">Off</span>
-                    </span>
+                    <span
+                      className={`absolute top-[1.5px] h-2.5 w-2.5 rounded-full transition-all duration-200 shadow-sm ${
+                        activeSubtitleId
+                          ? "left-[14px] bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)]"
+                          : "left-[2px] bg-white/40 group-hover:bg-white/60"
+                      }`}
+                    />
                   </button>
+                </div>
 
+                <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-1.5 pr-1">
                   {/* Subtitle Tracks */}
                   {subtitleTracks.length === 0 ? (
                     <div className="flex items-center justify-center px-3 py-4">
@@ -322,15 +341,52 @@ export function AudioSubtitlesPopover({
                           key={track.id}
                           type="button"
                           onClick={() => onSubtitleChange(track)}
-                          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-left transition-colors ${
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 cursor-pointer ${
                             isActive
-                              ? "text-white bg-white/[0.14]"
-                              : "text-gray-300 hover:text-white hover:bg-white/[0.08]"
+                              ? "bg-white/[0.08] border border-cyan-500/30 text-white shadow-[0_0_15px_rgba(6,182,212,0.1)]"
+                              : "text-gray-300 hover:text-white hover:bg-white/[0.04] border border-transparent"
                           }`}
                         >
-                          <span className="flex-1 min-w-0">
-                            <span className="block truncate">{track.label || track.lang}</span>
-                          </span>
+                          {/* Flag Icon Container */}
+                          <div className="flex h-7 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-black/40 p-0.5 border border-white/10 overflow-hidden shadow-inner">
+                            {track.flagUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={track.flagUrl}
+                                alt=""
+                                className="h-full w-full object-cover rounded-[4px]"
+                              />
+                            ) : (
+                              <span className="text-[10px] font-bold text-white/50 uppercase">
+                                {track.lang?.slice(0, 2) || "CC"}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Language Name & Lang code */}
+                          <div className="flex-1 min-w-0">
+                            <span className="block truncate text-[13px] font-medium text-white leading-tight">
+                              {track.label || track.lang}
+                            </span>
+                            <span className="block text-[11px] text-gray-400 font-normal lowercase leading-tight mt-0.5">
+                              {track.lang || "en"}
+                            </span>
+                          </div>
+
+                          {/* Selected Checkmark Badge */}
+                          {isActive && (
+                            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-cyan-400/80 bg-cyan-500/20 text-cyan-300">
+                              <svg
+                                className="h-3 w-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            </div>
+                          )}
                         </button>
                       );
                     })

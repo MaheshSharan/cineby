@@ -326,8 +326,18 @@ export function PlayerContainer({
       }
       setIsResolvingStream(false);
 
-      if (result.subtitles) {
+      if (result.subtitles && result.subtitles.length > 0) {
         setAvailableSubtitles(result.subtitles);
+        // Auto-select English subtitle track by default if none is currently selected
+        if (!subtitles.activeTrack) {
+          const defaultSub =
+            result.subtitles.find(
+              (s) => s.lang.toLowerCase() === "en" || s.label.toLowerCase().includes("english")
+            ) ?? null;
+          if (defaultSub) {
+            subtitles.selectTrack(defaultSub);
+          }
+        }
       }
       if (result.sources && result.sources.length > 0) {
         setAvailableSources(result.sources);

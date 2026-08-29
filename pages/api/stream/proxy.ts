@@ -115,6 +115,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
+    const isSrt =
+      rawTargetUrl.includes(".srt") ||
+      rawTargetUrl.includes("subtitles.vidy.st/download") ||
+      rawTargetUrl.includes("subs.videasy.to/download") ||
+      contentType.includes("x-subrip") ||
+      contentType.includes("text/plain");
+
+    if (isSrt) {
+      let text = await upstreamRes.text();
+      // Ensure WebVTT format for browser native HTML5 video <track>
+      if (!text.trim().startsWith("WEBVTT")) {
+        // Convert SRT commas in timestamps (00:01:20,000) to WebVTT dots (00:01:20.000)
+        text = "WEBVTT\n\n" + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+      }
+      res.setHeader("Content-Type", "text/vtt; charset=utf-8");
+      res.status(upstreamRes.status).send(text);
+      return;
+    }
+
     // Binary / Video Segment Streaming
     if (upstreamRes.headers.has("content-type")) {
       res.setHeader("Content-Type", upstreamRes.headers.get("content-type")!);

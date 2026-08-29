@@ -191,12 +191,82 @@ async function scrapeServer(
   }
 }
 
+interface VideasySubItem {
+  id?: string;
+  url?: string;
+  display?: string;
+  language?: string;
+  flagUrl?: string;
+  format?: string;
+  isHearingImpaired?: boolean;
+}
+
+async function fetchVideasySubtitles(
+  imdbId: string,
+  type: "movie" | "tv",
+  season?: number | null,
+  episode?: number | null,
+  signal?: AbortSignal
+): Promise<SubtitleTrack[]> {
+  if (!imdbId) return [];
+
+  try {
+    const url = new URL("https://subs.videasy.to/search");
+    url.searchParams.set("id", imdbId);
+    if (type === "tv") {
+      url.searchParams.set("season", String(season ?? 1));
+      url.searchParams.set("episode", String(episode ?? 1));
+    }
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        Referer: "https://www.vidking.net/",
+        Origin: "https://www.vidking.net",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      },
+      signal,
+    });
+
+    if (!res.ok) return [];
+
+    const data = (await res.json()) as VideasySubItem[];
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .filter((sub) => Boolean(sub.url))
+      .map((sub, idx) => {
+        const lang = sub.language || "en";
+        const label = sub.display || (lang === "en" ? "English" : lang.toUpperCase());
+        const isSrt = sub.format?.toLowerCase() === "srt" || sub.url?.endsWith(".srt");
+
+        return {
+          id: `videasy-${sub.id || idx}`,
+          lang,
+          label: sub.isHearingImpaired ? `${label} (CC)` : label,
+          flagUrl: sub.flagUrl,
+          url: sub.url as string,
+          format: isSrt ? "srt" : "vtt",
+          headers: {
+            Referer: "https://www.vidking.net/",
+            Origin: "https://www.vidking.net",
+          },
+        };
+      });
+  } catch (error) {
+    if (!signal?.aborted) {
+      logError("Provider:vidking:subtitles", error);
+    }
+    return [];
+  }
+}
+
 async function scrape(req: StreamRequest): Promise<StreamResponse> {
   if (req.signal?.aborted) {
     return { sources: [], subtitles: [] };
   }
 
-  const { tmdbId, type, signal } = req;
+  const { tmdbId, type, season, episode, signal } = req;
 
   // 1. Fetch metadata and seed concurrently
   const [meta, seed] = await Promise.all([
@@ -207,6 +277,11 @@ async function scrape(req: StreamRequest): Promise<StreamResponse> {
   if (!seed) {
     return { sources: [], subtitles: [] };
   }
+
+  // 2. Fetch Videasy subtitles in background/parallel while stream servers race
+  const subtitlesPromise = meta.imdbId
+    ? fetchVideasySubtitles(meta.imdbId, type, season, episode, signal)
+    : Promise.resolve<SubtitleTrack[]>([]);
 
   const requestedServerId = req.serverId?.startsWith(`${PROVIDER_ID}-`)
     ? req.serverId.slice(PROVIDER_ID.length + 1)
@@ -220,11 +295,9 @@ async function scrape(req: StreamRequest): Promise<StreamResponse> {
   }
 
   if (!requestedServerId) {
-    // Playback should begin as soon as one server resolves. Waiting for every
-    // upstream server makes a healthy stream feel slow whenever one server is
-    // delayed or unavailable.
+    // Playback should begin as soon as one server resolves.
     try {
-      return await Promise.any(
+      const fastestResult = await Promise.any(
         servers.map(async (server) => {
           const result = await scrapeServer(server, req, meta, seed);
           if (result.sources.length === 0) {
@@ -233,6 +306,22 @@ async function scrape(req: StreamRequest): Promise<StreamResponse> {
           return result;
         })
       );
+
+      const externalSubs = await subtitlesPromise.catch(() => []);
+      const mergedSubs = [...fastestResult.subtitles];
+      const seen = new Set(mergedSubs.map((s) => s.url));
+
+      for (const sub of externalSubs) {
+        if (!seen.has(sub.url)) {
+          seen.add(sub.url);
+          mergedSubs.push(sub);
+        }
+      }
+
+      return {
+        sources: fastestResult.sources,
+        subtitles: mergedSubs,
+      };
     } catch {
       return { sources: [], subtitles: [] };
     }
@@ -255,6 +344,14 @@ async function scrape(req: StreamRequest): Promise<StreamResponse> {
           allSubtitles.push(sub);
         }
       }
+    }
+  }
+
+  const externalSubs = await subtitlesPromise.catch(() => []);
+  for (const sub of externalSubs) {
+    if (!seenSubtitles.has(sub.url)) {
+      seenSubtitles.add(sub.url);
+      allSubtitles.push(sub);
     }
   }
 

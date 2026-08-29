@@ -23,7 +23,7 @@ export function PlayerShell({
   onNavigateEpisode,
 }: PlayerShellProps) {
   const handleTimeUpdate = useCallback(
-    (currentTime: number, duration: number) => {
+    (currentTime: number, duration: number, playback?: { seasonNumber?: number; episodeNumber?: number }) => {
       if (!media) return;
       // Persist history through the existing POST endpoint.
       fetch("/api/history", {
@@ -35,8 +35,8 @@ export function PlayerShell({
           title,
           posterPath: media.posterPath ?? null,
           backdropPath: media.backdropPath ?? null,
-          seasonNumber: media.seasonNumber ?? null,
-          episodeNumber: media.episodeNumber ?? null,
+          seasonNumber: playback?.seasonNumber ?? media.seasonNumber ?? null,
+          episodeNumber: playback?.episodeNumber ?? media.episodeNumber ?? null,
           duration: media.duration ?? null,
           progress: Math.round((currentTime / Math.max(1, duration)) * 100),
         }),

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import {
-  AntennaIcon,
   ChevronDownIcon,
   ClapperboardIcon,
   FanIcon,
@@ -10,7 +9,6 @@ import {
   Grid2x2Icon,
   HeartIcon,
   PartyPopperIcon,
-  ProjectorIcon,
   TvIcon,
 } from "@/components/ui/icons";
 
@@ -103,28 +101,6 @@ export function BrowsePopup() {
                   Features
                 </h4>
                 <div className="grid grid-cols-3 gap-1.5">
-                  <Link
-                    href="/livestream"
-                    onClick={() => setIsOpen(false)}
-                    className="group flex flex-col items-center rounded-lg p-2 transition-all duration-200 hover:bg-white/10"
-                  >
-                    <div className="glass-card-subtle mb-1 rounded-lg border border-blue-400/20 p-2 transition-all duration-200 group-hover:border-blue-400/40">
-                      <AntennaIcon size={20} className="text-blue-400" />
-                    </div>
-                    <span className="text-[9px] font-medium text-white">Channels</span>
-                  </Link>
-
-                  <Link
-                    href="/4k"
-                    onClick={() => setIsOpen(false)}
-                    className="group flex flex-col items-center rounded-lg p-2 transition-all duration-200 hover:bg-white/10"
-                  >
-                    <div className="glass-card-subtle mb-1 rounded-lg border border-purple-400/20 p-2 transition-all duration-200 group-hover:border-purple-400/40">
-                      <ProjectorIcon size={20} className="text-purple-400" />
-                    </div>
-                    <span className="text-[9px] font-medium text-white">4K</span>
-                  </Link>
-
                   <button
                     type="button"
                     className="group flex flex-col items-center rounded-lg p-2 transition-all duration-200 hover:bg-white/10"

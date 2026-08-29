@@ -1,4 +1,5 @@
 import { getDb } from "./connection";
+import { findDefaultProfileId } from "./profiles";
 import type { HistoryEntry } from "./types";
 
 export interface HistoryInput {
@@ -28,20 +29,25 @@ interface HistoryRow {
   watched_at: string;
 }
 
-export function addHistoryEntry(userId: number, input: HistoryInput): void {
+export function addHistoryEntry(userId: number, profileId: number | undefined, input: HistoryInput): void {
+  const effectiveProfileId = profileId ?? findDefaultProfileId(userId);
+  // No profile yet (user is still onboarding): nothing to scope the entry to.
+  if (effectiveProfileId === null) return;
+
   const db = getDb();
 
   // Deduplicate: remove any prior history entry for this catalog item
   // so that only 1 latest state per movie or TV show is retained.
   db.prepare(
-    "DELETE FROM watch_history WHERE user_id = ? AND media_type = ? AND media_id = ?"
-  ).run(userId, input.mediaType, input.mediaId);
+    "DELETE FROM watch_history WHERE profile_id = ? AND media_type = ? AND media_id = ?"
+  ).run(effectiveProfileId, input.mediaType, input.mediaId);
 
   db.prepare(
-    `INSERT INTO watch_history (user_id, media_type, media_id, title, poster_path, backdrop_path, season_number, episode_number, duration, progress, watched_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO watch_history (user_id, profile_id, media_type, media_id, title, poster_path, backdrop_path, season_number, episode_number, duration, progress, watched_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     userId,
+    effectiveProfileId,
     input.mediaType,
     input.mediaId,
     input.title,
@@ -55,24 +61,31 @@ export function addHistoryEntry(userId: number, input: HistoryInput): void {
   );
 }
 
-export function removeFromHistory(userId: number, historyId: number): void {
+export function removeFromHistory(userId: number, profileId: number | undefined, historyId: number): void {
+  const effectiveProfileId = profileId ?? findDefaultProfileId(userId);
+  if (effectiveProfileId === null) return;
+
   getDb()
-    .prepare("DELETE FROM watch_history WHERE user_id = ? AND id = ?")
-    .run(userId, historyId);
+    .prepare("DELETE FROM watch_history WHERE user_id = ? AND profile_id = ? AND id = ?")
+    .run(userId, effectiveProfileId, historyId);
 }
 
-export function clearHistory(userId: number): void {
-  getDb()
-    .prepare("DELETE FROM watch_history WHERE user_id = ?")
-    .run(userId);
+export function clearHistory(userId: number, profileId?: number): void {
+  const effectiveProfileId = profileId ?? findDefaultProfileId(userId);
+  if (effectiveProfileId === null) return;
+
+  getDb().prepare("DELETE FROM watch_history WHERE user_id = ? AND profile_id = ?").run(userId, effectiveProfileId);
 }
 
-export function listHistory(userId: number, limit = 50): HistoryEntry[] {
+export function listHistory(userId: number, profileId?: number, limit = 50): HistoryEntry[] {
+  const effectiveProfileId = profileId ?? findDefaultProfileId(userId);
+  if (effectiveProfileId === null) return [];
+
   const rows = getDb()
     .prepare(
-      `SELECT * FROM watch_history WHERE user_id = ? ORDER BY watched_at DESC LIMIT ?`
+      `SELECT * FROM watch_history WHERE user_id = ? AND profile_id = ? ORDER BY watched_at DESC LIMIT ?`
     )
-    .all(userId, limit) as unknown as HistoryRow[];
+    .all(userId, effectiveProfileId, limit) as unknown as HistoryRow[];
 
   return rows.map((row) => ({
     id: row.id,

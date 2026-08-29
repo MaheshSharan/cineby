@@ -23,12 +23,12 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === "GET") {
-    res.status(200).json({ inWatchlist: isInWatchlist(user.id, mediaType, mediaId) });
+    res.status(200).json({ inWatchlist: isInWatchlist(user.id, mediaType, mediaId, user.activeProfileId ?? undefined) });
     return;
   }
 
   if (req.method === "DELETE") {
-    removeFromWatchlist(user.id, mediaType, mediaId);
+    removeFromWatchlist(user.id, mediaType, mediaId, user.activeProfileId ?? undefined);
     res.status(200).json({ inWatchlist: false });
     return;
   }

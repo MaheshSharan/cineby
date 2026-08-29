@@ -22,13 +22,7 @@ export function buildStreamProxyUrl(
     return targetUrl;
   }
 
-  const params = new URLSearchParams({
-    url: targetUrl,
-  });
-
-  if (headers && Object.keys(headers).length > 0) {
-    params.set("headers", JSON.stringify(headers));
-  }
+  const params = new URLSearchParams({ token: createProxyDescriptor(targetUrl, headers) });
 
   if (cleanBase.includes("?")) {
     return `${cleanBase}&${params.toString()}`;
@@ -44,3 +38,4 @@ export function buildStreamProxyUrl(
 export function isStreamProxyConfigured(): boolean {
   return true;
 }
+import { createProxyDescriptor } from "./signedProxy";

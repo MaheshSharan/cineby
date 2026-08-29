@@ -9,6 +9,7 @@ import {
 import { createSession } from "@/lib/db/sessions";
 import { createUser, findUserByIdentifier, toPublicUser } from "@/lib/db/users";
 import { logError } from "@/lib/logger";
+import { allowAuthAttempt, authClientKey } from "@/lib/auth/rateLimit";
 
 interface RegisterBody {
   email?: unknown;
@@ -29,8 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     typeof body.username === "string" && body.username.trim()
       ? body.username.trim()
       : typeof body.email === "string" && body.email.trim()
-      ? body.email.trim()
-      : "";
+        ? body.email.trim()
+        : "";
   const identifier = rawIdentifier.toLowerCase();
   const password = typeof body.password === "string" ? body.password : "";
   const rawDisplayName =
@@ -38,6 +39,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? body.displayName.trim()
       : rawIdentifier;
   const displayName = rawDisplayName ? rawDisplayName.slice(0, 60) : null;
+
+  if (!allowAuthAttempt(authClientKey(req, rawIdentifier))) {
+    res.status(429).json({ error: "Too many attempts. Try again later." });
+    return;
+  }
 
   if (!rawIdentifier || rawIdentifier.length < 3) {
     res.status(400).json({ error: "Username or email must be at least 3 characters." });

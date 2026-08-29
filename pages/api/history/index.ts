@@ -25,7 +25,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === "GET") {
-    res.status(200).json({ items: listHistory(user.id) });
+    res.status(200).json({ items: listHistory(user.id, user.activeProfileId ?? undefined) });
     return;
   }
 
@@ -33,9 +33,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     const id = req.query.id ? Number(req.query.id) : null;
     try {
       if (id && Number.isInteger(id)) {
-        removeFromHistory(user.id, id);
+        removeFromHistory(user.id, user.activeProfileId ?? undefined, id);
       } else {
-        clearHistory(user.id);
+        clearHistory(user.id, user.activeProfileId ?? undefined);
       }
       res.status(200).json({ success: true });
     } catch (error) {
@@ -66,7 +66,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     try {
-      addHistoryEntry(user.id, {
+      addHistoryEntry(user.id, user.activeProfileId ?? undefined, {
         mediaType,
         mediaId,
         title,

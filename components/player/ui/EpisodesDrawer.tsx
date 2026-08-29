@@ -40,7 +40,7 @@ export function EpisodesDrawer({
   autoNext,
   onToggleAutoNext,
 }: EpisodesDrawerProps) {
-  const [query, setQuery] = useState("");
+  const [query] = useState("");
   const hasScrolledRef = useRef(false);
 
   const activeEpisodeRef = useCallback((node: HTMLDivElement | null) => {

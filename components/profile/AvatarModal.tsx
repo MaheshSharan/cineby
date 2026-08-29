@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useAuth } from "@/components/auth/AuthProvider";
 import { CheckIcon, XIcon } from "@/components/ui/icons";
-import { useActiveProfile } from "@/hooks/useActiveProfile";
 import { CLASSIC_AVATARS, type AvatarItem } from "@/lib/profile/avatars";
 
 interface AvatarModalProps {
   open: boolean;
   currentAvatarUrl?: string;
-  onSelect?: (url: string) => void;
+  onSelect: (url: string) => void;
   onClose: () => void;
 }
 
@@ -18,22 +16,15 @@ export function AvatarModal({
   onSelect,
   onClose,
 }: AvatarModalProps) {
-  const { user, refresh, showToast } = useAuth();
-  const { activeProfile } = useActiveProfile();
-  const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(currentAvatarUrl ?? null);
   const [showAll, setShowAll] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (currentAvatarUrl) {
-      setSelectedUrl(currentAvatarUrl);
-    } else if (activeProfile?.avatarUrl) {
-      setSelectedUrl(activeProfile.avatarUrl);
-    } else if (user?.avatarUrl) {
-      setSelectedUrl(user.avatarUrl);
+    if (open) {
+      setSelectedUrl(currentAvatarUrl ?? null);
     }
-  }, [currentAvatarUrl, activeProfile?.avatarUrl, user?.avatarUrl, open]);
+  }, [open, currentAvatarUrl]);
 
   useEffect(() => {
     if (!open) {
@@ -64,88 +55,27 @@ export function AvatarModal({
     };
   }, [open, onClose]);
 
-  // Place the currently active avatar at index 0 so it's clearly shown first with the check tick
+  // Put the profile's current avatar first so it's visible with the tick,
+  // but key the order off the incoming prop — not the clicked selection —
+  // so the grid stays stable while the user browses other options.
   const orderedAvatars = useMemo(() => {
-    const list = [...CLASSIC_AVATARS];
-    if (!selectedUrl) return list;
+    if (!currentAvatarUrl) return CLASSIC_AVATARS;
 
-    const activeIdx = list.findIndex((a) => a.url === selectedUrl);
-    if (activeIdx > 0) {
-      const [activeItem] = list.splice(activeIdx, 1);
-      list.unshift(activeItem);
-    }
+    const activeIdx = CLASSIC_AVATARS.findIndex((avatar) => avatar.url === currentAvatarUrl);
+    if (activeIdx <= 0) return CLASSIC_AVATARS;
+
+    const list = [...CLASSIC_AVATARS];
+    const [activeItem] = list.splice(activeIdx, 1);
+    list.unshift(activeItem);
     return list;
-  }, [selectedUrl]);
+  }, [currentAvatarUrl]);
 
   if (!open) return null;
 
-  const handleSelectAvatar = async (avatar: AvatarItem) => {
+  const handleSelectAvatar = (avatar: AvatarItem) => {
     setSelectedUrl(avatar.url);
-
-    if (onSelect) {
-      onSelect(avatar.url);
-      onClose();
-      return;
-    }
-
-    setIsUpdating(true);
-    try {
-      const response = await fetch("/api/auth/avatar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar: avatar.url }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update avatar");
-      }
-
-      // Update active profile and profile list in scoped localStorage
-      if (user?.id) {
-        const activeKey = `cineby_active_profile_${user.id}`;
-        const profilesKey = `cineby_profiles_${user.id}`;
-
-        try {
-          const activeRaw = localStorage.getItem(activeKey);
-          if (activeRaw) {
-            const activeObj = JSON.parse(activeRaw);
-            activeObj.avatarUrl = avatar.url;
-            localStorage.setItem(activeKey, JSON.stringify(activeObj));
-
-            // Also update corresponding profile in the profiles list
-            const profilesRaw = localStorage.getItem(profilesKey);
-            if (profilesRaw) {
-              const profilesList = JSON.parse(profilesRaw);
-              const updatedList = profilesList.map((p: { id: string; avatarUrl: string }) =>
-                p.id === activeObj.id ? { ...p, avatarUrl: avatar.url } : p
-              );
-              localStorage.setItem(profilesKey, JSON.stringify(updatedList));
-            }
-          } else {
-            const newActive = {
-              id: "default-1",
-              name: user.displayName || user.email.split("@")[0],
-              avatarUrl: avatar.url,
-            };
-            localStorage.setItem(activeKey, JSON.stringify(newActive));
-            localStorage.setItem(profilesKey, JSON.stringify([newActive]));
-          }
-
-          // Trigger same-tab updates across Header, Dock, etc.
-          window.dispatchEvent(new StorageEvent("storage", { key: activeKey }));
-        } catch {
-          // ignore storage error
-        }
-      }
-
-      await refresh();
-      showToast("Avatar updated successfully!");
-      onClose();
-    } catch {
-      showToast("Unable to save avatar. Please try again.");
-    } finally {
-      setIsUpdating(false);
-    }
+    onSelect(avatar.url);
+    onClose();
   };
 
   const displayedAvatars = showAll ? orderedAvatars : orderedAvatars.slice(0, 12);
@@ -203,7 +133,6 @@ export function AvatarModal({
                 <button
                   key={avatar.id}
                   type="button"
-                  disabled={isUpdating}
                   onClick={() => handleSelectAvatar(avatar)}
                   className={`group relative aspect-square w-full rounded-full overflow-hidden border transition-all duration-200 cursor-pointer ${
                     isSelected

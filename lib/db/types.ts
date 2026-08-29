@@ -4,6 +4,7 @@ export interface User {
   displayName: string | null;
   avatarUrl: string | null;
   createdAt: string;
+  activeProfileId?: number | null;
 }
 
 export interface WatchlistItem {

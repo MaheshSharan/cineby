@@ -27,8 +27,8 @@ interface NavItem {
 
 export function Header() {
   const router = useRouter();
-  const { user, openAuthModal } = useAuth();
-  const { activeProfile } = useActiveProfile();
+  const { user, openAuthModal, showToast } = useAuth();
+  const { activeProfile, refreshProfile } = useActiveProfile();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -69,6 +69,34 @@ export function Header() {
 
   const handleUserClick = () => {
     setIsProfileDropdownOpen((prev) => !prev);
+  };
+
+  const handleAvatarSelect = async (avatarUrl: string) => {
+    if (!user) return;
+
+    try {
+      if (activeProfile) {
+        const response = await fetch(`/api/profiles/${activeProfile.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: activeProfile.name, avatarUrl }),
+        });
+        if (!response.ok) throw new Error("Failed to update avatar");
+      } else {
+        // No active profile yet (user has none): fall back to the account avatar.
+        const response = await fetch("/api/auth/avatar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatar: avatarUrl }),
+        });
+        if (!response.ok) throw new Error("Failed to update avatar");
+      }
+
+      refreshProfile();
+      showToast("Avatar updated");
+    } catch {
+      showToast("Unable to save avatar. Please try again.");
+    }
   };
 
   return (
@@ -169,6 +197,8 @@ export function Header() {
                   open={isProfileDropdownOpen}
                   onClose={() => setIsProfileDropdownOpen(false)}
                   onOpenAvatarModal={() => setIsAvatarModalOpen(true)}
+                  profileAvatarUrl={activeProfile?.avatarUrl || user?.avatarUrl || undefined}
+                  profileName={activeProfile?.name || user?.displayName || user?.email.split("@")[0]}
                 />
               </div>
             </nav>
@@ -192,6 +222,7 @@ export function Header() {
       <AvatarModal
         open={isAvatarModalOpen}
         currentAvatarUrl={activeProfile?.avatarUrl || user?.avatarUrl || undefined}
+        onSelect={handleAvatarSelect}
         onClose={() => setIsAvatarModalOpen(false)}
       />
     </>

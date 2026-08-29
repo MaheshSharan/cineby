@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { createProxyDescriptor, readProxyDescriptor } from "@/lib/providers/signedProxy";
 
 export const config = {
   api: {
@@ -17,21 +18,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const { url: rawTargetUrl, headers: rawHeaders } = req.query;
-
-  if (!rawTargetUrl || typeof rawTargetUrl !== "string") {
-    res.status(400).json({ error: "Missing 'url' query parameter" });
+  const rawToken = typeof req.query.token === "string" ? req.query.token : "";
+  const descriptor = rawToken ? readProxyDescriptor(rawToken) : null;
+  if (!descriptor) {
+    res.status(401).json({ error: "Missing or invalid stream descriptor" });
     return;
   }
-
-  let customHeaders: Record<string, string> = {};
-  if (typeof rawHeaders === "string" && rawHeaders.trim()) {
-    try {
-      customHeaders = JSON.parse(rawHeaders);
-    } catch {
-      // Ignore parse failure
-    }
-  }
+  const rawTargetUrl = descriptor.url;
+  const customHeaders = descriptor.headers;
 
   let targetUrl: URL;
   try {
@@ -43,6 +37,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (targetUrl.protocol !== "https:" && targetUrl.protocol !== "http:") {
     res.status(400).json({ error: "Unsupported stream URL protocol" });
+    return;
+  }
+
+  const allowedHosts = (process.env.STREAM_PROXY_ALLOWED_HOSTS ?? "").split(",").map((host) => host.trim()).filter(Boolean);
+  if (allowedHosts.length > 0 && !allowedHosts.some((host) => targetUrl.hostname === host || targetUrl.hostname.endsWith(`.${host}`))) {
+    res.status(403).json({ error: "Stream host is not allowed" });
+    return;
+  }
+  if (["localhost", "127.0.0.1", "::1"].includes(targetUrl.hostname) || targetUrl.hostname.endsWith(".local")) {
+    res.status(403).json({ error: "Private stream hosts are not allowed" });
     return;
   }
 
@@ -76,7 +80,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (isM3u8) {
       const text = await upstreamRes.text();
       const targetBase = rawTargetUrl.substring(0, rawTargetUrl.lastIndexOf("/") + 1);
-      const encodedCustomHeaders = encodeURIComponent(JSON.stringify(customHeaders));
 
       // Rewrite M3U8 lines so all child playlists, initialization segments, and media segments route through proxy
       const rewritten = text
@@ -91,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               const abs = uri.startsWith("http://") || uri.startsWith("https://")
                 ? uri
                 : new URL(uri, targetBase).toString();
-              return `URI="/api/stream/proxy?url=${encodeURIComponent(abs)}&headers=${encodedCustomHeaders}"`;
+              return `URI="/api/stream/proxy?token=${encodeURIComponent(createProxyDescriptor(abs, customHeaders))}"`;
             });
           }
 
@@ -103,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ? trimmed
             : new URL(trimmed, targetBase).toString();
 
-          return `/api/stream/proxy?url=${encodeURIComponent(absoluteUrl)}&headers=${encodedCustomHeaders}`;
+          return `/api/stream/proxy?token=${encodeURIComponent(createProxyDescriptor(absoluteUrl, customHeaders))}`;
         })
         .join("\n");
 

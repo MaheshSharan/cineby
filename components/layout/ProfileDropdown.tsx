@@ -2,8 +2,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 
-import { useActiveProfile } from "@/hooks/useActiveProfile";
-
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   BookmarkIcon,
@@ -19,12 +17,19 @@ interface ProfileDropdownProps {
   open: boolean;
   onClose: () => void;
   onOpenAvatarModal?: () => void;
+  profileAvatarUrl?: string;
+  profileName?: string;
 }
 
-export function ProfileDropdown({ open, onClose, onOpenAvatarModal }: ProfileDropdownProps) {
+export function ProfileDropdown({
+  open,
+  onClose,
+  onOpenAvatarModal,
+  profileAvatarUrl,
+  profileName,
+}: ProfileDropdownProps) {
   const router = useRouter();
   const { user, logout, openAuthModal, showToast } = useAuth();
-  const { activeProfile } = useActiveProfile();
   const menuRef = useRef<HTMLDivElement>(null);
   const [showAds, setShowAds] = useState(false);
 
@@ -96,14 +101,14 @@ export function ProfileDropdown({ open, onClose, onOpenAvatarModal }: ProfileDro
               <span className="relative rounded-full overflow-hidden ring-1 ring-white/20 shrink-0 w-9 h-9">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={activeProfile?.avatarUrl || user.avatarUrl || "/avatar/classic-1.png"}
-                  alt={activeProfile?.name || user.displayName || user.email}
+                  src={profileAvatarUrl || "/avatar/classic-1.png"}
+                  alt={profileName || "Account"}
                   className="w-full h-full object-cover"
                 />
               </span>
               <div className="min-w-0">
                 <p className="font-semibold text-white truncate text-[13px]">
-                  {activeProfile?.name || user.displayName || user.email.split("@")[0]}
+                  {profileName || "Account"}
                 </p>
                 <p className="text-white/45 truncate mt-0.5 text-[11px]">{user.email}</p>
               </div>
@@ -127,7 +132,7 @@ export function ProfileDropdown({ open, onClose, onOpenAvatarModal }: ProfileDro
           <Link
             href="/watchlist"
             onClick={onClose}
-            role="menuitem"
+            role="menuitemcheckbox"
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-white/80 hover:text-white hover:bg-white/[0.07] transition-colors duration-150 text-left"
           >
             <BookmarkIcon size={15} className="shrink-0 text-white/55" />
@@ -154,7 +159,6 @@ export function ProfileDropdown({ open, onClose, onOpenAvatarModal }: ProfileDro
         <div className="p-1.5">
           <button
             type="button"
-            role="menuitem"
             aria-pressed={showAds}
             onClick={() => setShowAds((prev) => !prev)}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-white/80 hover:text-white hover:bg-white/[0.07] transition-colors duration-150 text-left cursor-pointer"

@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  if (!avatar.startsWith("data:image/") && !avatar.startsWith("https://") && !avatar.startsWith("/")) {
+  if (!/^\/avatar\/classic-(?:[1-9]|1\d|2\d|30)\.png$/.test(avatar)) {
     res.status(400).json({ error: "Invalid image format." });
     return;
   }

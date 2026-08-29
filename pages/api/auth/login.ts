@@ -7,8 +7,10 @@ import {
   SESSION_TTL_MS,
 } from "@/lib/auth/session";
 import { createSession } from "@/lib/db/sessions";
+import { ensureDefaultProfile } from "@/lib/db/profiles";
 import { findUserByIdentifier, toPublicUser } from "@/lib/db/users";
 import { logError } from "@/lib/logger";
+import { allowAuthAttempt, authClientKey } from "@/lib/auth/rateLimit";
 
 interface LoginBody {
   email?: unknown;
@@ -32,6 +34,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       : "";
   const password = typeof body.password === "string" ? body.password : "";
 
+  if (!allowAuthAttempt(authClientKey(req, rawIdentifier))) {
+    res.status(429).json({ error: "Too many attempts. Try again later." });
+    return;
+  }
+
   if (!rawIdentifier || !password) {
     res.status(400).json({ error: "Username/email and password are required." });
     return;
@@ -47,6 +54,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const token = createSessionToken();
     createSession(user.id, token, new Date(Date.now() + SESSION_TTL_MS).toISOString());
+
+    // Fallback for users who abandoned onboarding: they must end up with at
+    // least one profile, but never while the signup wizard is still in flight.
+    ensureDefaultProfile(user.id, user.display_name ?? user.email.split("@")[0]);
 
     res.setHeader("Set-Cookie", buildSessionCookie(token));
     res.status(200).json({ user: toPublicUser(user) });

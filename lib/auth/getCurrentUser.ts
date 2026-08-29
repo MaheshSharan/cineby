@@ -22,5 +22,6 @@ export function getCurrentUser(req: CookieRequest): User | null {
     displayName: session.display_name,
     avatarUrl: session.avatar_url ?? null,
     createdAt: session.user_created_at,
+    activeProfileId: session.active_profile_id,
   };
 }

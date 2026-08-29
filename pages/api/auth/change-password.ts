@@ -1,9 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
+import { getSessionToken } from "@/lib/auth/session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { deleteOtherUserSessions } from "@/lib/db/sessions";
 import { findUserById, updateUserPassword } from "@/lib/db/users";
 import { logError } from "@/lib/logger";
+import { allowAuthAttempt, authClientKey } from "@/lib/auth/rateLimit";
 
 interface ChangePasswordBody {
   currentPassword?: unknown;
@@ -26,6 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const body = (req.body ?? {}) as ChangePasswordBody;
   const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
   const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+
+  if (!allowAuthAttempt(authClientKey(req, String(currentUser.id)))) {
+    res.status(429).json({ error: "Too many attempts. Try again later." });
+    return;
+  }
 
   if (!currentPassword || !newPassword) {
     res.status(400).json({ error: "Current password and new password are required." });
@@ -52,6 +60,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const newPasswordHash = await hashPassword(newPassword);
     updateUserPassword(currentUser.id, newPasswordHash);
+    const currentToken = getSessionToken(req);
+    if (currentToken) {
+      deleteOtherUserSessions(currentUser.id, currentToken);
+    }
 
     res.status(200).json({ success: true, message: "Password updated successfully." });
   } catch (error) {

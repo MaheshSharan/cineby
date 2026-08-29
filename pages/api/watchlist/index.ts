@@ -21,13 +21,13 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === "GET") {
-    res.status(200).json({ items: listWatchlist(user.id) });
+    res.status(200).json({ items: listWatchlist(user.id, user.activeProfileId ?? undefined) });
     return;
   }
 
   if (req.method === "DELETE") {
     try {
-      clearWatchlist(user.id);
+      clearWatchlist(user.id, user.activeProfileId ?? undefined);
       res.status(200).json({ success: true });
     } catch (error) {
       logError("api/watchlist", error);
@@ -53,7 +53,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     try {
-      addToWatchlist(user.id, { mediaType, mediaId, title, posterPath, backdropPath });
+      addToWatchlist(user.id, { mediaType, mediaId, title, posterPath, backdropPath }, user.activeProfileId ?? undefined);
       res.status(201).json({ inWatchlist: true });
     } catch (error) {
       logError("api/watchlist", error);

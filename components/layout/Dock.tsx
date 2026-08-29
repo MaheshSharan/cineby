@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useActiveProfile } from "@/hooks/useActiveProfile";
 import {
-  AntennaIcon,
   ClapperboardIcon,
   CodeIcon,
   FanIcon,
@@ -15,7 +14,6 @@ import {
   HomeIcon,
   LogInIcon,
   PartyPopperIcon,
-  ProjectorIcon,
   SearchIcon,
   TvIcon,
   UserRoundIcon,
@@ -120,28 +118,6 @@ export function Dock({ onOpenSearch, onOpenAccount }: DockProps) {
                   Features
                 </h4>
                 <div className="grid grid-cols-3 gap-1.5">
-                  <Link
-                    href="/livestream"
-                    onClick={() => setIsBrowseOpen(false)}
-                    className="group flex flex-col items-center rounded-lg p-1.5 transition-all duration-200 hover:bg-white/10"
-                  >
-                    <div className="glass-card-subtle mb-1 rounded-lg border border-blue-400/20 p-2 group-hover:border-blue-400/40">
-                      <AntennaIcon size={18} className="text-blue-400" />
-                    </div>
-                    <span className="text-[9px] font-medium text-white">Channels</span>
-                  </Link>
-
-                  <Link
-                    href="/4k"
-                    onClick={() => setIsBrowseOpen(false)}
-                    className="group flex flex-col items-center rounded-lg p-1.5 transition-all duration-200 hover:bg-white/10"
-                  >
-                    <div className="glass-card-subtle mb-1 rounded-lg border border-purple-400/20 p-2 group-hover:border-purple-400/40">
-                      <ProjectorIcon size={18} className="text-purple-400" />
-                    </div>
-                    <span className="text-[9px] font-medium text-white">4K</span>
-                  </Link>
-
                   <button
                     type="button"
                     className="group flex flex-col items-center rounded-lg p-1.5 transition-all duration-200 hover:bg-white/10"

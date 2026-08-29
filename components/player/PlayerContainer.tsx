@@ -23,7 +23,7 @@ interface PlayerContainerProps {
   media: PlayerMedia;
   subtitle?: string;
   onBack?: () => void;
-  onTimeUpdate?: (currentTime: number, duration: number) => void;
+  onTimeUpdate?: (currentTime: number, duration: number, playback?: { seasonNumber?: number; episodeNumber?: number }) => void;
   onEnded?: () => void;
   onNavigateEpisode?: (seasonNumber: number, episodeNumber: number) => void;
 }
@@ -291,7 +291,7 @@ export function PlayerContainer({
 
   const subtitles = useSubtitles({ videoRef });
 
-  const currentMediaKey = `${media.mediaType}-${media.mediaId}-${media.seasonNumber ?? 0}-${media.episodeNumber ?? 0}`;
+  const currentMediaKey = `${media.mediaType}-${media.mediaId}-${isTv ? currentSeason : 0}-${isTv ? currentEpisode : 0}`;
   const lastMediaKeyRef = useRef<string>(currentMediaKey);
 
   const loadStream = useCallback(
@@ -315,8 +315,8 @@ export function PlayerContainer({
       const request = {
         mediaType: media.mediaType,
         mediaId: media.mediaId,
-        seasonNumber: media.seasonNumber,
-        episodeNumber: media.episodeNumber,
+        seasonNumber: isTv ? currentSeason : undefined,
+        episodeNumber: isTv ? currentEpisode : undefined,
         signal: controller.signal,
       };
 
@@ -377,7 +377,7 @@ export function PlayerContainer({
       setStream({ source, isError: false });
       void element.play().catch(() => {});
     },
-    [media.mediaType, media.mediaId, media.seasonNumber, media.episodeNumber, currentMediaKey]
+    [currentEpisode, currentMediaKey, currentSeason, isTv, media.mediaId, media.mediaType]
   );
 
   useEffect(() => {
@@ -420,12 +420,15 @@ export function PlayerContainer({
     }
 
     const saveHistory = () => {
-      onTimeUpdate?.(videoRef.current?.currentTime ?? 0, videoRef.current?.duration ?? 0);
+      onTimeUpdate?.(videoRef.current?.currentTime ?? 0, videoRef.current?.duration ?? 0, {
+        seasonNumber: isTv ? currentSeason : undefined,
+        episodeNumber: isTv ? currentEpisode : undefined,
+      });
     };
 
     const interval = window.setInterval(saveHistory, HISTORY_SAVE_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [stream.source, onTimeUpdate]);
+  }, [currentEpisode, currentSeason, isTv, onTimeUpdate, stream.source]);
 
   // Close open popovers with Escape
   useEffect(() => {
@@ -745,7 +748,7 @@ export function PlayerContainer({
           {/* Buffering Indicator */}
           {isLoading || playerState.isBuffering ? (
             <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-              <LoadingSpinner label={null} className="gap-0 [&>svg]:h-7 [&>svg]:w-7" />
+              <LoadingSpinner className="[&>svg]:h-7 [&>svg]:w-7" />
             </div>
           ) : null}
 

@@ -1,21 +1,15 @@
 interface LoadingSpinnerProps {
-  label?: string | null;
-  overlay?: boolean;
   className?: string;
 }
 
 export function LoadingSpinner({
-  label = "Loading",
-  overlay = false,
   className = "",
 }: LoadingSpinnerProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-4 ${
-        overlay ? "absolute inset-0 z-[100] bg-black/70 pointer-events-none" : ""
-      } ${className}`}
+      className={`flex items-center justify-center ${className}`}
       role="status"
-      aria-live="polite"
+      aria-label="Loading"
     >
       <svg
         className="h-14 w-14 animate-spin text-white"
@@ -30,9 +24,6 @@ export function LoadingSpinner({
           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
         />
       </svg>
-      {label ? (
-        <span className="text-sm font-medium text-white/80">{label}</span>
-      ) : null}
     </div>
   );
 }

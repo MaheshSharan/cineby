@@ -36,6 +36,15 @@ export function attachHls(video: HTMLVideoElement, src: string): HlsController {
   hls.loadSource(src);
   hls.attachMedia(video);
 
+  hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
+    const level = hls.levels[data.level];
+    if (level) {
+      console.log(
+        `[HlsEngine] ⚡ Active Stream Switched -> ${level.height}p @ ${level.bitrate ? Math.round(level.bitrate / 1000) : 0} kbps (${level.url || "chunk stream"})`
+      );
+    }
+  });
+
   return {
     destroy: () => {
       hls.destroy();
@@ -45,11 +54,16 @@ export function attachHls(video: HTMLVideoElement, src: string): HlsController {
 
       if (cap === 0) {
         hls.currentLevel = -1;
+        console.log("[HlsEngine] Quality setting changed to: Auto (Adaptive Bitrate)");
         return;
       }
 
       const target = hls.levels.findLastIndex((level) => level.height <= cap);
       hls.currentLevel = target >= 0 ? target : hls.levels.length - 1;
+      const active = hls.levels[hls.currentLevel];
+      console.log(
+        `[HlsEngine] Quality setting changed to: ${quality} (Target Level: ${active?.height ?? cap}p)`
+      );
     },
     getLevels: () =>
       hls.levels.map((level) => ({

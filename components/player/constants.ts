@@ -25,6 +25,21 @@ export const PLAYBACK_RATES: PlaybackRate[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.
 
 export const SERVERS: ServerOption[] = [
   { id: "default", name: "Auto", description: "Best available source", kind: "default" },
+  // Vidy Servers
+  { id: "vidy-miami", name: "Vidy - Miami", description: "Original audio · Fast HLS / 4K", kind: "default" },
+  { id: "vidy-seattle", name: "Vidy - Seattle", description: "Original audio · Fast HLS", kind: "default" },
+  { id: "vidy-denver", name: "Vidy - Denver", description: "Original audio · DASH / HLS", kind: "default" },
+  { id: "vidy-atlanta", name: "Vidy - Atlanta", description: "Original audio · Alternate HLS", kind: "default" },
+  { id: "vidy-phoenix", name: "Vidy - Phoenix", description: "Original audio · Alternate HLS", kind: "default" },
+  { id: "vidy-portland", name: "Vidy - Portland", description: "Original audio · Alternate HLS", kind: "default" },
+  { id: "vidy-austin", name: "Vidy - Austin", description: "Original audio · English stream", kind: "default" },
+  { id: "vidy-dallas", name: "Vidy - Dallas", description: "Original audio · Alternate HLS", kind: "default" },
+  { id: "vidy-munich", name: "Vidy - Munich", description: "German dubbed audio", kind: "default" },
+  { id: "vidy-berlin", name: "Vidy - Berlin", description: "German dubbed audio", kind: "default" },
+  { id: "vidy-paris", name: "Vidy - Paris", description: "French dubbed audio", kind: "default" },
+  { id: "vidy-delhi", name: "Vidy - Delhi", description: "Hindi dubbed audio", kind: "default" },
+  { id: "vidy-cancun", name: "Vidy - Cancun", description: "Spanish dubbed audio", kind: "default" },
+  // Vidking Servers
   { id: "vidking-yoru", name: "Vidking - Yoru", description: "Fast HLS stream", kind: "default" },
   { id: "vidking-cypher", name: "Vidking - Cypher", description: "Alternate HLS stream", kind: "default" },
   { id: "vidking-breach", name: "Vidking - Breach", description: "Alternate HLS stream", kind: "default" },

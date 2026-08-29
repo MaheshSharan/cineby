@@ -7,7 +7,6 @@ import { useActiveProfile } from "@/hooks/useActiveProfile";
 import {
   ClapperboardIcon,
   CodeIcon,
-  FanIcon,
   GalleryVerticalEndIcon,
   Grid2x2Icon,
   HeartIcon,
@@ -27,7 +26,6 @@ interface DockProps {
 const CONTENT_LINKS = [
   { label: "Movies", href: "/browse/movie", Icon: ClapperboardIcon },
   { label: "TV Shows", href: "/browse/tv", Icon: TvIcon },
-  { label: "Anime", href: "/browse/anime", Icon: FanIcon },
 ];
 
 export function Dock({ onOpenSearch, onOpenAccount }: DockProps) {
@@ -96,7 +94,7 @@ export function Dock({ onOpenSearch, onOpenAccount }: DockProps) {
                 <h4 className="px-1 text-[10px] font-medium uppercase tracking-[0.08em] text-text-mid">
                   Content
                 </h4>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
                   {CONTENT_LINKS.map(({ label, href, Icon }) => (
                     <Link
                       key={href}

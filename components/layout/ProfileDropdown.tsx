@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -8,7 +8,6 @@ import {
   GalleryVerticalEndIcon,
   ImageIcon,
   LogOutIcon,
-  MegaphoneIcon,
   PartyPopperIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -31,7 +30,6 @@ export function ProfileDropdown({
   const router = useRouter();
   const { user, logout, openAuthModal, showToast } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
-  const [showAds, setShowAds] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -150,33 +148,6 @@ export function ProfileDropdown({
           >
             <PartyPopperIcon size={15} className="shrink-0 text-white/55" />
             <span>Watch Party</span>
-          </button>
-        </div>
-
-        <div className="mx-3 h-px bg-white/10" />
-
-        {/* Section 2: Show ads toggle */}
-        <div className="p-1.5">
-          <button
-            type="button"
-            aria-pressed={showAds}
-            onClick={() => setShowAds((prev) => !prev)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-white/80 hover:text-white hover:bg-white/[0.07] transition-colors duration-150 text-left cursor-pointer"
-          >
-            <MegaphoneIcon size={15} className="shrink-0 text-white/55" />
-            <span className="min-w-0 flex-1 truncate text-left">Show ads</span>
-            <span
-              aria-hidden="true"
-              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                showAds ? "bg-primary" : "bg-white/15"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-[#0b0f14] transition-[left] duration-200 ${
-                  showAds ? "left-[18px]" : "left-0.5"
-                }`}
-              />
-            </span>
           </button>
         </div>
 

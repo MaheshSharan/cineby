@@ -16,7 +16,6 @@ interface BrowsePageProps {
 const CATEGORY_TITLES: Record<string, string> = {
   movie: "Browse Movies",
   tv: "Browse TV Shows",
-  anime: "Browse Anime",
 };
 
 const BrowsePage: NextPage<BrowsePageProps> = ({
@@ -39,7 +38,7 @@ const BrowsePage: NextPage<BrowsePageProps> = ({
 export const getServerSideProps: GetServerSideProps<BrowsePageProps> = async (context) => {
   const category = context.params?.category;
 
-  if (category !== "movie" && category !== "tv" && category !== "anime") {
+  if (category !== "movie" && category !== "tv") {
     return { notFound: true };
   }
 

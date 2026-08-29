@@ -11,7 +11,6 @@ import { AvatarModal } from "@/components/profile/AvatarModal";
 import { SearchModal } from "@/components/search/SearchModal";
 import {
   ClapperboardIcon,
-  FanIcon,
   HomeIcon,
   SearchIcon,
   TvIcon,
@@ -38,7 +37,6 @@ export function Header() {
   const isHome = router.pathname === "/";
   const isMovies = currentPath.startsWith("/browse/movie") || router.pathname.startsWith("/movie");
   const isTv = currentPath.startsWith("/browse/tv") || router.pathname.startsWith("/tv");
-  const isAnime = currentPath.startsWith("/browse/anime");
 
   const navItems: NavItem[] = [
     {
@@ -58,12 +56,6 @@ export function Header() {
       href: "/browse/tv",
       isActive: isTv,
       icon: <TvIcon size={14} className="flex-shrink-0" />,
-    },
-    {
-      label: "Anime",
-      href: "/browse/anime",
-      isActive: isAnime,
-      icon: <FanIcon size={14} className="flex-shrink-0" />,
     },
   ];
 

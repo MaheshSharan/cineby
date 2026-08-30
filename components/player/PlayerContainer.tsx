@@ -363,7 +363,7 @@ export function PlayerContainer({
         signal: controller.signal,
       };
 
-      const result = await resolveStream(serverId, request, resolveToken);
+      const result = await resolveStream(serverId, request, currentTokenRef.current);
       if (requestId !== requestIdRef.current) {
         console.log("[Player] Request aborted (navigation or new request)");
         return;
@@ -398,11 +398,6 @@ export function PlayerContainer({
 
       console.log(`[Player] ✅ Playing source: ${source.name} (${source.quality ?? "unknown"}) - ${source.format}`);
 
-      // Sync active serverId in settings to the actual source provider ID if it switched/fallback
-      if (source.id && source.id !== serverId) {
-        setSettings((prev) => ({ ...prev, serverId: source.id }));
-      }
-
       const format = source.format === "unknown" ? detectFormat(source.url) : source.format;
 
       if (mediaEngineRef.current) {
@@ -436,7 +431,7 @@ export function PlayerContainer({
       setStream({ source, isError: false });
       void element.play().catch(() => {});
     },
-    [currentEpisode, currentMediaKey, currentSeason, isTv, media.mediaId, media.mediaType, resolveToken, subtitles.activeTrack, subtitles.selectTrack]
+    [currentEpisode, currentMediaKey, currentSeason, isTv, media.mediaId, media.mediaType, subtitles.activeTrack, subtitles.selectTrack]
   );
 
   const loadStreamDoubleBuffer = useCallback(

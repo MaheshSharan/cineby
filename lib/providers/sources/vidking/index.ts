@@ -8,6 +8,7 @@ import type {
 } from "../../types";
 import { decryptVidkingPayload } from "./cipher";
 import { logError } from "@/lib/logger";
+import { getCachedSeed, cacheSeed } from "@/lib/stream/seedCache";
 
 const PROVIDER_ID = "vidking";
 const PROVIDER_NAME = "Vidking";
@@ -98,12 +99,19 @@ async function fetchMetadata(
 }
 
 async function fetchSeed(tmdbId: number, signal?: AbortSignal): Promise<string | null> {
+  const cached = await getCachedSeed(tmdbId);
+  if (cached) {
+    return cached;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/seed?mediaId=${tmdbId}`, { signal });
     if (res.ok) {
       const data: unknown = await res.json();
       if (data && typeof data === "object" && "seed" in data) {
-        return String((data as { seed: string }).seed);
+        const seed = String((data as { seed: string }).seed);
+        await cacheSeed(tmdbId, seed);
+        return seed;
       }
     }
   } catch (err) {

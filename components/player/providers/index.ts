@@ -16,7 +16,8 @@ function toQualityLabel(quality?: Quality | string): QualityLabel | null {
 
 export async function resolveStream(
   serverId: string,
-  request: StreamRequest
+  request: StreamRequest,
+  resolveToken: string
 ): Promise<StreamResolutionResult> {
   const params = new URLSearchParams({
     tmdbId: request.mediaId.toString(),
@@ -36,6 +37,9 @@ export async function resolveStream(
   try {
     const res = await fetch(`/api/stream/resolve?${params.toString()}`, {
       signal: request.signal,
+      headers: {
+        "X-Stream-Token": resolveToken,
+      },
     });
 
     if (res.ok) {

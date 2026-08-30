@@ -7,6 +7,7 @@ import type { TvDetails } from "@/lib/tmdb";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { listHistory } from "@/lib/db/history";
 import { formatRuntime, getEpisodeHref, getYear } from "@/lib/utils/media";
+import { generateResolveToken } from "@/lib/security/resolveToken";
 
 import { PlayerShell } from "@/components/player/PlayerShell";
 import type { PlayerMedia, PlayerSeason } from "@/components/player/types";
@@ -15,9 +16,10 @@ interface WatchPageProps {
   title: string;
   subtitle?: string;
   media: PlayerMedia;
+  resolveToken: string;
 }
 
-const WatchPage: NextPage<WatchPageProps> = ({ title, subtitle, media }) => {
+const WatchPage: NextPage<WatchPageProps> = ({ title, subtitle, media, resolveToken }) => {
   const router = useRouter();
 
   return (
@@ -29,6 +31,7 @@ const WatchPage: NextPage<WatchPageProps> = ({ title, subtitle, media }) => {
         title={title}
         subtitle={subtitle}
         media={media}
+        resolveToken={resolveToken}
         onNavigateEpisode={(season, episode) =>
           router.push(getEpisodeHref(media.mediaId, season, episode))
         }
@@ -46,6 +49,13 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
     return { notFound: true };
   }
 
+  const user = getCurrentUser(context.req);
+  const ip = (context.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+    ?? context.req.socket.remoteAddress
+    ?? "0.0.0.0";
+  const ipPrefix = ip.split(".").slice(0, 3).join(".");
+  const sessionId = user?.id?.toString() ?? "anon";
+
   try {
     if (mediaType === "tv") {
       const details = await getTvDetails(id);
@@ -53,7 +63,6 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
       let episode = parseOptionalNumber(params[3]);
 
       if (!season || !episode) {
-        const user = getCurrentUser(context.req);
         if (user) {
           const historyList = listHistory(user.id);
           const match = historyList.find(
@@ -73,6 +82,8 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
         ? formatRuntime(details.episodeRunTime[0])
         : undefined;
 
+      const resolveToken = generateResolveToken(sessionId, ipPrefix, details.id);
+
       return {
         props: {
           title: details.title,
@@ -90,6 +101,7 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
             releaseYear: getYear(details.releaseDate),
             seasons: toPlayerSeasons(details.seasons),
           },
+          resolveToken,
         },
       };
     }
@@ -97,6 +109,8 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
     const details = await getMovieDetails(id);
     const duration = details.runtime ? formatRuntime(details.runtime) : undefined;
     const releaseYear = getYear(details.releaseDate);
+
+    const resolveToken = generateResolveToken(sessionId, ipPrefix, details.id);
 
     return {
       props: {
@@ -112,6 +126,7 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
           runtime: details.runtime ?? null,
           releaseYear,
         },
+        resolveToken,
       },
     };
   } catch {

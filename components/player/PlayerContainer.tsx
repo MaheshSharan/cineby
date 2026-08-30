@@ -11,6 +11,7 @@ import { formatRuntime } from "@/lib/utils/media";
 import { usePlayerControls } from "./hooks/usePlayerControls";
 import { usePlayerState } from "./hooks/usePlayerState";
 import { useSubtitles } from "./hooks/useSubtitles";
+import { useEpisodePrefetch } from "@/hooks/useEpisodePrefetch";
 
 import { AudioSubtitlesPopover, DEFAULT_SUBTITLE_APPEARANCE, type SubtitleAppearance } from "./ui/AudioSubtitlesPopover";
 import { EpisodesDrawer } from "./ui/EpisodesDrawer";
@@ -22,6 +23,7 @@ import { QualityPopover } from "./ui/QualityPopover";
 interface PlayerContainerProps {
   media: PlayerMedia;
   subtitle?: string;
+  resolveToken: string;
   onBack?: () => void;
   onTimeUpdate?: (currentTime: number, duration: number, playback?: { seasonNumber?: number; episodeNumber?: number }) => void;
   onEnded?: () => void;
@@ -46,6 +48,7 @@ function detectFormat(url: string): MediaSource["format"] {
 export function PlayerContainer({
   media,
   subtitle,
+  resolveToken,
   onBack,
   onTimeUpdate,
   onEnded,
@@ -53,10 +56,13 @@ export function PlayerContainer({
 }: PlayerContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const stagingVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaEngineRef = useRef<MediaEngine | null>(null);
+  const stagingEngineRef = useRef<MediaEngine | null>(null);
   const streamRequestControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const endedRef = useRef(false);
+  const currentTokenRef = useRef<string>(resolveToken);
 
   const qualityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -115,6 +121,34 @@ export function PlayerContainer({
   }, [activeSeasonInfo, currentEpisode, currentSeason, seasons]);
 
   const hasNext = isTv && currentSeasonEpisodes.length > 0 && !isLastEpisode;
+
+  const nextEpisode = useMemo(() => {
+    if (!isTv || !hasNext) {
+      return null;
+    }
+
+    const isLastOfCurrentSeason = currentEpisode >= (activeSeasonInfo?.episodeCount ?? 0);
+    if (!isLastOfCurrentSeason) {
+      return {
+        tmdbId: media.mediaId,
+        season: currentSeason,
+        episode: currentEpisode + 1,
+      };
+    }
+
+    const nextSeason = seasons.find(
+      (season) => season.seasonNumber > currentSeason && season.episodeCount > 0
+    );
+    if (nextSeason) {
+      return {
+        tmdbId: media.mediaId,
+        season: nextSeason.seasonNumber,
+        episode: 1,
+      };
+    }
+
+    return null;
+  }, [isTv, hasNext, currentEpisode, activeSeasonInfo, currentSeason, seasons, media.mediaId]);
 
   // Fetch episodes for current and drawer seasons
   useEffect(() => {
@@ -235,6 +269,13 @@ export function PlayerContainer({
   });
   const { setRate } = playerState;
 
+  useEpisodePrefetch({
+    currentTime: playerState.currentTime,
+    duration: playerState.duration,
+    nextEpisode,
+    mediaType: media.mediaType,
+  });
+
   function toggleFullscreen() {
     const element = containerRef.current;
     if (!element) return;
@@ -320,7 +361,7 @@ export function PlayerContainer({
         signal: controller.signal,
       };
 
-      const result = await resolveStream(serverId, request);
+      const result = await resolveStream(serverId, request, resolveToken);
       if (requestId !== requestIdRef.current) {
         return;
       }
@@ -387,7 +428,127 @@ export function PlayerContainer({
       setStream({ source, isError: false });
       void element.play().catch(() => {});
     },
-    [currentEpisode, currentMediaKey, currentSeason, isTv, media.mediaId, media.mediaType]
+    [currentEpisode, currentMediaKey, currentSeason, isTv, media.mediaId, media.mediaType, resolveToken, subtitles]
+  );
+
+  const loadStreamDoubleBuffer = useCallback(
+    async (serverId: string) => {
+      const activeElement = videoRef.current;
+      if (!activeElement) {
+        await loadStream(serverId);
+        return;
+      }
+
+      const snapshotTime = activeElement.currentTime;
+
+      if (stagingVideoRef.current) {
+        if (stagingEngineRef.current) {
+          stagingEngineRef.current.destroy();
+          stagingEngineRef.current = null;
+        }
+        stagingVideoRef.current.remove();
+        stagingVideoRef.current = null;
+      }
+
+      const staging = document.createElement("video");
+      staging.style.display = "none";
+      staging.muted = true;
+      staging.playsInline = true;
+      activeElement.parentElement?.appendChild(staging);
+      stagingVideoRef.current = staging;
+
+      const requestId = ++requestIdRef.current;
+      streamRequestControllerRef.current?.abort();
+      const controller = new AbortController();
+      streamRequestControllerRef.current = controller;
+      setIsResolvingStream(true);
+
+      let freshToken = currentTokenRef.current;
+      try {
+        const tokenRes = await fetch(`/api/stream/token-refresh?tmdbId=${media.mediaId}`);
+        if (tokenRes.ok) {
+          const data = (await tokenRes.json()) as { token?: string };
+          if (data.token) {
+            freshToken = data.token;
+            currentTokenRef.current = freshToken;
+          }
+        }
+      } catch {}
+
+      const request = {
+        mediaType: media.mediaType,
+        mediaId: media.mediaId,
+        seasonNumber: isTv ? currentSeason : undefined,
+        episodeNumber: isTv ? currentEpisode : undefined,
+        signal: controller.signal,
+      };
+
+      const result = await resolveStream(serverId, request, freshToken);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+      setIsResolvingStream(false);
+
+      if (result.subtitles && result.subtitles.length > 0) {
+        setAvailableSubtitles(result.subtitles);
+      }
+      if (result.sources && result.sources.length > 0) {
+        setAvailableSources(result.sources);
+      }
+
+      const source = result.source;
+      if (!source) {
+        setStream({ source: null, isError: true });
+        if (stagingVideoRef.current) {
+          stagingVideoRef.current.remove();
+          stagingVideoRef.current = null;
+        }
+        return;
+      }
+
+      if (source.id && source.id !== serverId) {
+        setSettings((prev) => ({ ...prev, serverId: source.id }));
+      }
+
+      const format = source.format === "unknown" ? detectFormat(source.url) : source.format;
+      const stagingEngine = createMediaEngine(staging, source.url, format);
+      stagingEngineRef.current = stagingEngine;
+
+      staging.currentTime = snapshotTime;
+
+      const onCanPlay = () => {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        activeElement.pause();
+        staging.currentTime = activeElement.currentTime;
+        staging.style.display = "block";
+        staging.muted = activeElement.muted;
+        staging.volume = activeElement.volume;
+        activeElement.style.display = "none";
+
+        void staging.play().catch(() => {});
+
+        if (mediaEngineRef.current) {
+          mediaEngineRef.current.destroy();
+          mediaEngineRef.current = null;
+        }
+        activeElement.remove();
+
+        videoRef.current = staging;
+        mediaEngineRef.current = stagingEngine;
+        stagingVideoRef.current = null;
+        stagingEngineRef.current = null;
+
+        staging.removeEventListener("canplay", onCanPlay);
+
+        setStream({ source, isError: false });
+      };
+
+      staging.addEventListener("canplay", onCanPlay, { once: true });
+    },
+    [currentEpisode, currentSeason, isTv, loadStream, media.mediaId, media.mediaType]
   );
 
   useEffect(() => {
@@ -400,6 +561,15 @@ export function PlayerContainer({
       streamRequestControllerRef.current = null;
       mediaEngineRef.current?.destroy();
       mediaEngineRef.current = null;
+
+      if (stagingEngineRef.current) {
+        stagingEngineRef.current.destroy();
+        stagingEngineRef.current = null;
+      }
+      if (stagingVideoRef.current) {
+        stagingVideoRef.current.remove();
+        stagingVideoRef.current = null;
+      }
 
       if (qualityTimerRef.current) clearTimeout(qualityTimerRef.current);
       if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
@@ -519,9 +689,12 @@ export function PlayerContainer({
     [handleNavigate]
   );
 
-  const handleServerChange = useCallback((serverId: string) => {
-    setSettings((current) => ({ ...current, serverId }));
-  }, []);
+  const handleServerChange = useCallback(
+    (serverId: string) => {
+      void loadStreamDoubleBuffer(serverId);
+    },
+    [loadStreamDoubleBuffer]
+  );
 
   const handleQualityChange = useCallback((quality: PlayerSettings["quality"]) => {
     setSettings((current) => ({ ...current, quality }));

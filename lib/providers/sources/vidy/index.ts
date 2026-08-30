@@ -9,6 +9,7 @@ import type {
 import { decryptVidyPayload } from "./cipher";
 import { VIDY_SERVERS, type VidyServerConfig } from "./servers";
 import { logError } from "@/lib/logger";
+import { getCachedSeed, cacheSeed } from "@/lib/stream/seedCache";
 
 const PROVIDER_ID = "vidy";
 const PROVIDER_NAME = "Vidy";
@@ -119,6 +120,11 @@ async function fetchMetadata(
 }
 
 async function fetchSeed(tmdbId: number, signal?: AbortSignal): Promise<string | null> {
+  const cached = await getCachedSeed(tmdbId);
+  if (cached) {
+    return cached;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/seed?mediaId=${tmdbId}`, {
       headers: {
@@ -133,7 +139,9 @@ async function fetchSeed(tmdbId: number, signal?: AbortSignal): Promise<string |
     if (res.ok) {
       const data: unknown = await res.json();
       if (data && typeof data === "object" && "seed" in data) {
-        return String((data as { seed: string }).seed);
+        const seed = String((data as { seed: string }).seed);
+        await cacheSeed(tmdbId, seed);
+        return seed;
       }
     }
   } catch (err) {

@@ -26,15 +26,39 @@ function getHlsQualityCap(quality: QualityLabel | null): number {
 export function attachHls(video: HTMLVideoElement, src: string): HlsController {
   const hls = new Hls({
     enableWorker: true,
-    backBufferLength: 30,
-    maxBufferLength: 20,
-    maxMaxBufferLength: 40,
-    startLevel: -1,
+    
+    // Instant first frame - start with lowest bitrate
+    startLevel: 0,
+    testBandwidth: false,
+    
+    // Buffer tuning
+    backBufferLength: 60,
+    maxBufferLength: 30,
+    maxMaxBufferLength: 60,
+    maxBufferSize: 60 * 1024 * 1024,
+    
+    // ABR
+    abrEwmaDefaultEstimate: 5_000_000,
+    abrBandWidthFactor: 0.9,
     capLevelToPlayerSize: true,
+    
+    // Timeouts
+    manifestLoadingTimeOut: 4_000,
+    manifestLoadingMaxRetry: 3,
+    levelLoadingTimeOut: 4_000,
+    fragLoadingTimeOut: 8_000,
+    fragLoadingMaxRetry: 3,
   });
 
   hls.loadSource(src);
   hls.attachMedia(video);
+
+  // Hand off to ABR after first fragment renders
+  hls.on(Hls.Events.FRAG_BUFFERED, (_event, data) => {
+    if (data.frag.sn === 0) {
+      hls.nextLevel = -1;
+    }
+  });
 
   hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
     const level = hls.levels[data.level];

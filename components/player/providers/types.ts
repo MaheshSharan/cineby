@@ -18,4 +18,8 @@ export interface StreamResolutionResult {
   source: MediaSource | null;
   sources: MediaSource[];
   subtitles: SubtitleTrack[];
+  error?: {
+    status: number;
+    reason?: string;
+  };
 }

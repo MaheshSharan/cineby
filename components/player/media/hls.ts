@@ -33,20 +33,20 @@ export function attachHls(video: HTMLVideoElement, src: string): HlsController {
     
     // Buffer tuning
     backBufferLength: 60,
-    maxBufferLength: 30,
-    maxMaxBufferLength: 60,
+    maxBufferLength: 45,
+    maxMaxBufferLength: 90,
     maxBufferSize: 60 * 1024 * 1024,
-    
+
     // ABR
     abrEwmaDefaultEstimate: 5_000_000,
     abrBandWidthFactor: 0.9,
     capLevelToPlayerSize: true,
-    
-    // Timeouts
-    manifestLoadingTimeOut: 4_000,
+
+    // Timeouts (proxied upstream segments can legitimately take several seconds)
+    manifestLoadingTimeOut: 10_000,
     manifestLoadingMaxRetry: 3,
-    levelLoadingTimeOut: 4_000,
-    fragLoadingTimeOut: 8_000,
+    levelLoadingTimeOut: 10_000,
+    fragLoadingTimeOut: 15_000,
     fragLoadingMaxRetry: 3,
   });
 

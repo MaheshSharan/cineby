@@ -188,6 +188,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Binary / Video Segment Streaming
     res.status(upstreamRes.status);
 
+    // Segments are immutable content behind unique signed URLs; allow the browser to
+    // cache them so seeks back into already-watched territory don't re-hit upstream.
+    if (!upstreamRes.headers.get("cache-control")) {
+      res.setHeader("Cache-Control", "private, max-age=3600");
+    }
+
     if (upstreamRes.body) {
       const reader = upstreamRes.body.getReader();
       let bytesStreamed = 0;
@@ -203,7 +209,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return;
         }
 
-        res.write(Buffer.from(value));
+        const canContinue = res.write(Buffer.from(value));
+        if (!canContinue) {
+          // Respect backpressure instead of buffering the whole segment in memory
+          await new Promise<void>((resolve) => res.once("drain", resolve));
+        }
       }
     }
     res.end();

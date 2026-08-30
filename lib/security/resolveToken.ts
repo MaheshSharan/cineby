@@ -68,7 +68,13 @@ export async function consumeResolveToken(
     .update(payloadStr)
     .digest("base64url");
 
-  if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
+  // Length pre-check keeps timingSafeEqual from throwing on malformed signatures
+  const signatureBuffer = Buffer.from(sig);
+  const expectedBuffer = Buffer.from(expectedSig);
+  if (
+    signatureBuffer.length !== expectedBuffer.length ||
+    !timingSafeEqual(signatureBuffer, expectedBuffer)
+  ) {
     return { valid: false, reason: "invalid_signature" };
   }
 

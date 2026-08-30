@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { PROXY_DESCRIPTOR_TTL_MS } from "./constants";
+
 interface Descriptor { url: string; headers: Record<string, string>; expiresAt: number; }
 
 let devFallbackSecret: string | null = null;
@@ -18,7 +20,7 @@ function sign(payload: string): string {
 }
 
 export function createProxyDescriptor(url: string, headers: Record<string, string> = {}): string {
-  const payload = Buffer.from(JSON.stringify({ url, headers, expiresAt: Date.now() + 5 * 60_000 })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ url, headers, expiresAt: Date.now() + PROXY_DESCRIPTOR_TTL_MS })).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 

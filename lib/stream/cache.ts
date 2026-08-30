@@ -10,18 +10,49 @@ const inflight = new Map<string, Promise<StreamResponse>>();
 function cacheKey(req: StreamRequest): string {
   const s = req.season ?? 0;
   const e = req.episode ?? 0;
-  return `manifest:${req.type}:${req.tmdbId}:${s}:${e}`;
+  // v2 = raw upstream URLs (wrapping moved to serve time). Old v1 entries hold
+  // pre-wrapped URLs with expiring descriptors and are left to age out of Redis.
+  return `manifest:v2:${req.type}:${req.tmdbId}:${s}:${e}`;
+}
+
+function matchesServer(providerId: string, serverId: string): boolean {
+  return providerId === serverId || providerId.startsWith(`${serverId}-`);
+}
+
+// The cache holds the full multi-server resolution for a media item; a request that
+// targets one server gets that server's sources filtered out of it. If the requested
+// server is not part of the cached result, fall back to a fresh targeted resolution.
+function filterByServer(
+  result: StreamResponse,
+  serverId: string | undefined,
+  req: StreamRequest
+): Promise<StreamResponse> | StreamResponse {
+  if (!serverId || serverId === "default") {
+    return result;
+  }
+
+  const sources = result.sources.filter((source) =>
+    matchesServer(source.provider.id, serverId)
+  );
+
+  if (sources.length === 0) {
+    logInfo("StreamCache", `🎯 Server "${serverId}" not in cache, resolving targeted`);
+    return resolveAllStreams(req, { targetProviderId: serverId });
+  }
+
+  return { sources, subtitles: result.subtitles };
 }
 
 export async function getOrResolveStream(
   req: StreamRequest,
+  options?: { serverId?: string }
 ): Promise<StreamResponse> {
   const key = cacheKey(req);
 
   const cached = await getJson<StreamResponse>(key);
   if (cached) {
     logInfo("StreamCache", `✅ Cache HIT: ${key}`);
-    return cached;
+    return filterByServer(cached, options?.serverId, req);
   }
 
   logInfo("StreamCache", `❌ Cache MISS: ${key}`);
@@ -29,7 +60,7 @@ export async function getOrResolveStream(
   const existing = inflight.get(key);
   if (existing) {
     logInfo("StreamCache", `⏳ SingleFlight: Waiting for inflight request ${key}`);
-    return existing;
+    return filterByServer(await existing, options?.serverId, req);
   }
 
   logInfo("StreamCache", `🔍 Starting provider resolution for ${key}`);
@@ -45,5 +76,5 @@ export async function getOrResolveStream(
     });
 
   inflight.set(key, promise);
-  return promise;
+  return filterByServer(await promise, options?.serverId, req);
 }

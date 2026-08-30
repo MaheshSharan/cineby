@@ -1,3 +1,6 @@
+import { createProxyDescriptor } from "./signedProxy";
+import type { StreamResponse } from "./types";
+
 export function buildStreamProxyUrl(
   targetUrl: string,
   headers?: Record<string, string>
@@ -38,4 +41,19 @@ export function buildStreamProxyUrl(
 export function isStreamProxyConfigured(): boolean {
   return true;
 }
-import { createProxyDescriptor } from "./signedProxy";
+
+// Descriptors are minted at serve time, never at cache time. Cached resolution results
+// keep raw upstream URLs so a cache hit never hands out descriptors that already spent
+// part of their lifetime in Redis.
+export function applyStreamProxy(response: StreamResponse): StreamResponse {
+  return {
+    sources: response.sources.map((source) => ({
+      ...source,
+      url: source.direct ? source.url : buildStreamProxyUrl(source.url, source.headers),
+    })),
+    subtitles: response.subtitles.map((subtitle) => ({
+      ...subtitle,
+      url: buildStreamProxyUrl(subtitle.url, subtitle.headers),
+    })),
+  };
+}

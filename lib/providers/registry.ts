@@ -1,6 +1,5 @@
 import { DEFAULT_PROVIDER_TIMEOUT_MS, QUALITY_RANKS } from "./constants";
 import { isCircuitOpen, recordFailure, recordSuccess } from "./circuitBreaker";
-import { buildStreamProxyUrl } from "./proxy";
 import { ALL_PROVIDERS } from "./sources";
 import type { Provider, StreamRequest, StreamResponse, StreamSource, SubtitleTrack } from "./types";
 import { logError, logInfo, logWarn, logDebug } from "@/lib/logger";
@@ -113,13 +112,13 @@ export async function resolveAllStreams(
     const provider = targetProviders[i];
 
     if (res.status === "fulfilled" && res.value) {
-      // Collect sources
+      // Collect sources (raw upstream URLs; the resolve route wraps them with fresh
+      // proxy descriptors at serve time so cached results never expire)
       for (const source of res.value.sources) {
         if (source.url && !seenSourceUrls.has(source.url)) {
           seenSourceUrls.add(source.url);
           collectedSources.push({
             ...source,
-            url: source.direct ? source.url : buildStreamProxyUrl(source.url, source.headers),
             provider: {
               id: source.provider?.id || provider.id,
               name: source.provider?.name || provider.name,
@@ -137,7 +136,6 @@ export async function resolveAllStreams(
             ...sub,
             flagUrl: sub.flagUrl,
             format: sub.format,
-            url: buildStreamProxyUrl(sub.url, sub.headers),
           });
         }
       }
@@ -145,11 +143,17 @@ export async function resolveAllStreams(
   }
 
   // Sort sources: Provider Priority (ASC) -> Quality Rank (DESC)
+  // Providers report server-level ids ("vidy-miami"), so match by prefix.
+  const providerPriority = (sourceProviderId: string): number => {
+    const match = targetProviders.find(
+      (p) => p.id === sourceProviderId || sourceProviderId.startsWith(`${p.id}-`)
+    );
+    return match?.priority ?? 100;
+  };
+
   collectedSources.sort((a, b) => {
-    const providerA = targetProviders.find((p) => p.id === a.provider.id);
-    const providerB = targetProviders.find((p) => p.id === b.provider.id);
-    const priorityA = providerA?.priority ?? 100;
-    const priorityB = providerB?.priority ?? 100;
+    const priorityA = providerPriority(a.provider.id);
+    const priorityB = providerPriority(b.provider.id);
 
     if (priorityA !== priorityB) {
       return priorityA - priorityB;

@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { consumeResolveToken } from "@/lib/security/resolveToken";
 import { slidingWindowLimit } from "@/lib/security/rateLimit";
 import { getOrResolveStream } from "@/lib/stream/cache";
+import { applyStreamProxy } from "@/lib/providers/proxy";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import type { MediaType, StreamResponse } from "@/lib/providers/types";
 import { logInfo, logError, logWarn } from "@/lib/logger";
@@ -82,16 +83,23 @@ export default async function handler(
   const mediaType: MediaType = type === "tv" ? "tv" : "movie";
   const seasonNum = season ? Number.parseInt(String(season), 10) : undefined;
   const episodeNum = episode ? Number.parseInt(String(episode), 10) : undefined;
+  const serverId = typeof req.query.server === "string" && req.query.server ? req.query.server : undefined;
 
   logInfo("API:Resolve", "Calling stream resolver (cache or provider)");
 
   try {
-    const result = await getOrResolveStream({
-      tmdbId: parsedTmdbId,
-      type: mediaType,
-      season: seasonNum,
-      episode: episodeNum,
-    });
+    const resolved = await getOrResolveStream(
+      {
+        tmdbId: parsedTmdbId,
+        type: mediaType,
+        season: seasonNum,
+        episode: episodeNum,
+      },
+      { serverId }
+    );
+    // Wrap upstream URLs with fresh descriptors on every response so cached results
+    // never serve already-aging (or expired) proxy tokens.
+    const result = applyStreamProxy(resolved);
 
     const elapsed = Date.now() - startTime;
     logInfo(

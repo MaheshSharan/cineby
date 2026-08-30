@@ -332,6 +332,27 @@ export function PlayerContainer({
 
   const subtitles = useSubtitles({ videoRef });
 
+  // Latest-value mirror: loadStream reads subtitle state through the ref instead of
+  // depending on it, so selecting a track never re-creates loadStream (which would
+  // re-resolve with an already-consumed single-use token and fail with 403).
+  const subtitlesRef = useRef(subtitles);
+  useEffect(() => {
+    subtitlesRef.current = subtitles;
+  }, [subtitles]);
+
+  const fetchFreshResolveToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/stream/token-refresh?tmdbId=${media.mediaId}`);
+      if (!res.ok) {
+        return null;
+      }
+      const data = (await res.json()) as { token?: string };
+      return data.token ?? null;
+    } catch {
+      return null;
+    }
+  }, [media.mediaId]);
+
   const currentMediaKey = `${media.mediaType}-${media.mediaId}-${isTv ? currentSeason : 0}-${isTv ? currentEpisode : 0}`;
   const lastMediaKeyRef = useRef<string>(currentMediaKey);
 
@@ -363,11 +384,32 @@ export function PlayerContainer({
         signal: controller.signal,
       };
 
-      const result = await resolveStream(serverId, request, currentTokenRef.current);
+      let result = await resolveStream(serverId, request, currentTokenRef.current);
       if (requestId !== requestIdRef.current) {
         console.log("[Player] Request aborted (navigation or new request)");
         return;
       }
+
+      // Resolve tokens are single-use; a concurrent mount (React StrictMode) or a
+      // stale token can exhaust the current one. Self-heal once with a fresh token
+      // instead of failing the whole load.
+      if (result.error && result.sources.length === 0 && !controller.signal.aborted) {
+        console.warn(
+          `[Player] Resolve rejected (status=${result.error.status}, reason=${result.error.reason ?? "unknown"}) - retrying with a fresh token`
+        );
+        const freshToken = await fetchFreshResolveToken();
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        if (freshToken) {
+          currentTokenRef.current = freshToken;
+          result = await resolveStream(serverId, request, freshToken);
+          if (requestId !== requestIdRef.current) {
+            return;
+          }
+        }
+      }
+
       setIsResolvingStream(false);
 
       console.log(`[Player] Resolved ${result.sources?.length ?? 0} sources, ${result.subtitles?.length ?? 0} subtitles`);
@@ -375,13 +417,13 @@ export function PlayerContainer({
       if (result.subtitles && result.subtitles.length > 0) {
         setAvailableSubtitles(result.subtitles);
         // Auto-select English subtitle track by default if none is currently selected
-        if (!subtitles.activeTrack) {
+        if (!subtitlesRef.current.activeTrack) {
           const defaultSub =
             result.subtitles.find(
               (s) => s.lang.toLowerCase() === "en" || s.label.toLowerCase().includes("english")
             ) ?? null;
           if (defaultSub) {
-            subtitles.selectTrack(defaultSub);
+            subtitlesRef.current.selectTrack(defaultSub);
           }
         }
       }
@@ -392,7 +434,10 @@ export function PlayerContainer({
       const source = result.source;
       if (!source) {
         console.error("[Player] ❌ No source resolved");
-        setStream({ source: null, isError: true });
+        // Keep a stream that is already playing instead of tearing it down with an error
+        setStream((current) =>
+          current.source ? current : { source: null, isError: true }
+        );
         return;
       }
 
@@ -431,7 +476,7 @@ export function PlayerContainer({
       setStream({ source, isError: false });
       void element.play().catch(() => {});
     },
-    [currentEpisode, currentMediaKey, currentSeason, isTv, media.mediaId, media.mediaType, subtitles.activeTrack, subtitles.selectTrack]
+    [currentEpisode, currentMediaKey, currentSeason, fetchFreshResolveToken, isTv, media.mediaId, media.mediaType]
   );
 
   const loadStreamDoubleBuffer = useCallback(
@@ -467,16 +512,14 @@ export function PlayerContainer({
       setIsResolvingStream(true);
 
       let freshToken = currentTokenRef.current;
-      try {
-        const tokenRes = await fetch(`/api/stream/token-refresh?tmdbId=${media.mediaId}`);
-        if (tokenRes.ok) {
-          const data = (await tokenRes.json()) as { token?: string };
-          if (data.token) {
-            freshToken = data.token;
-            currentTokenRef.current = freshToken;
-          }
-        }
-      } catch {}
+      const refreshedToken = await fetchFreshResolveToken();
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+      if (refreshedToken) {
+        freshToken = refreshedToken;
+        currentTokenRef.current = refreshedToken;
+      }
 
       const request = {
         mediaType: media.mediaType,
@@ -501,7 +544,10 @@ export function PlayerContainer({
 
       const source = result.source;
       if (!source) {
-        setStream({ source: null, isError: true });
+        // Keep a stream that is already playing instead of tearing it down with an error
+        setStream((current) =>
+          current.source ? current : { source: null, isError: true }
+        );
         if (stagingVideoRef.current) {
           stagingVideoRef.current.remove();
           stagingVideoRef.current = null;
@@ -551,7 +597,7 @@ export function PlayerContainer({
 
       staging.addEventListener("canplay", onCanPlay, { once: true });
     },
-    [currentEpisode, currentSeason, isTv, loadStream, media.mediaId, media.mediaType]
+    [currentEpisode, currentSeason, fetchFreshResolveToken, isTv, loadStream, media.mediaId, media.mediaType]
   );
 
   useEffect(() => {

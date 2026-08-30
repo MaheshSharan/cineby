@@ -71,9 +71,14 @@ export interface StreamRequest {
   type: "movie" | "tv";
   season?: number | null;     // Season number (TV only)
   episode?: number | null;    // Episode number (TV only)
+  serverId?: string;          // Targeted server id (e.g. "vidy-miami") when the user picked one
   signal?: AbortSignal;       // Must be passed to every fetch call
 }
 ```
+
+> **Note on URLs**: providers return **raw upstream URLs**. The resolve route wraps them
+> with fresh signed proxy descriptors at serve time (`applyStreamProxy`), so cached
+> results never hold expiring descriptors. Never proxy-wrap inside a provider.
 
 ### Output: `StreamResponse`
 ```ts

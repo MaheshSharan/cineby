@@ -2,6 +2,12 @@ import type { Quality } from "./types";
 
 export const DEFAULT_PROVIDER_TIMEOUT_MS = 12_000;
 
+// Proxy descriptors must stay valid for an entire playback session. VOD playlists are
+// fetched once and the segment/subtitle URLs they contain keep using the descriptors
+// minted when the manifest/resolve response was served, so a short TTL turns into 401s
+// for any playback (or seek into unbuffered territory) that outlives it.
+export const PROXY_DESCRIPTOR_TTL_MS = 6 * 60 * 60 * 1000;
+
 export const CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
 
 export const CIRCUIT_BREAKER_RESET_TIMEOUT_MS = 60_000;

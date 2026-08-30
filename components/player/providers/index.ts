@@ -73,7 +73,29 @@ export async function resolveStream(
           subtitles: mappedSubtitles,
         };
       }
+
+      return {
+        source: null,
+        sources: [],
+        subtitles: [],
+        error: { status: res.status, reason: "malformed_response" },
+      };
     }
+
+    // Surface the rejection reason so callers can react (e.g. self-heal an
+    // exhausted single-use resolve token by fetching a fresh one).
+    const body: unknown = await res.json().catch(() => null);
+    const reason =
+      body && typeof body === "object" && "reason" in body && typeof (body as { reason: unknown }).reason === "string"
+        ? (body as { reason: string }).reason
+        : undefined;
+
+    return {
+      source: null,
+      sources: [],
+      subtitles: [],
+      error: { status: res.status, reason },
+    };
   } catch {
     // Network or client abort
   }

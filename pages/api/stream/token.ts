@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { generateResolveToken } from "@/lib/security/resolveToken";
+import { slidingWindowLimit } from "@/lib/security/rateLimit";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 
 export default async function handler(
@@ -22,6 +23,25 @@ export default async function handler(
     ?? "0.0.0.0";
   const ipPrefix = ip.split(".").slice(0, 3).join(".");
   const sessionId = user?.id?.toString() ?? "anon";
+
+  const perUserKey = `rl:token:user:${sessionId}`;
+  const perIpKey = `rl:token:ip:${ipPrefix}`;
+
+  const userLimit = await slidingWindowLimit(perUserKey, {
+    windowSecs: 60,
+    max: 20,
+  });
+  if (!userLimit.allowed) {
+    return res.status(429).json({ error: "Too many token requests" });
+  }
+
+  const ipLimit = await slidingWindowLimit(perIpKey, {
+    windowSecs: 3600,
+    max: 200,
+  });
+  if (!ipLimit.allowed) {
+    return res.status(429).json({ error: "Too many token requests from IP" });
+  }
 
   const token = generateResolveToken(sessionId, ipPrefix, tmdbId);
 

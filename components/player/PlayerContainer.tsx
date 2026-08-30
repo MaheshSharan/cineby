@@ -949,7 +949,7 @@ export function PlayerContainer({
                 type="button"
                 onClick={() => {
                   setStream({ source: null, isError: false });
-                  void loadStream(settings.serverId);
+                  void loadStreamDoubleBuffer(settings.serverId);
                 }}
                 className="flex-shrink-0 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-white/90 cursor-pointer"
               >

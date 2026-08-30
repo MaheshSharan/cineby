@@ -23,7 +23,6 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  // Link caller signal with timeout signal
   if (request.signal) {
     request.signal.addEventListener("abort", () => controller.abort());
   }
@@ -33,13 +32,13 @@ async function fetchWithTimeout(
       ...request,
       signal: controller.signal,
     });
-    recordSuccess(provider.id);
+    await recordSuccess(provider.id);
     return res;
   } catch (error) {
     if (controller.signal.aborted || request.signal?.aborted) {
       return { sources: [], subtitles: [] };
     }
-    recordFailure(provider.id);
+    await recordFailure(provider.id);
     logError(`Provider:${provider.id}`, error);
     return { sources: [], subtitles: [] };
   } finally {
@@ -53,11 +52,24 @@ export async function resolveAllStreams(
 ): Promise<StreamResponse> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_PROVIDER_TIMEOUT_MS;
 
-  const targetProviders = ALL_PROVIDERS.filter((p) => {
-    if (options?.targetProviderId && options.targetProviderId !== "default") {
-      return p.id === options.targetProviderId || options.targetProviderId.startsWith(`${p.id}-`);
-    }
-    return isProviderEnabled(p) && !isCircuitOpen(p.id);
+  const circuitChecks = await Promise.all(
+    ALL_PROVIDERS.map(async (p) => ({
+      provider: p,
+      open: await isCircuitOpen(p.id),
+    }))
+  );
+
+  const targetProviders = circuitChecks
+    .filter((check) => {
+      if (options?.targetProviderId && options.targetProviderId !== "default") {
+        return (
+          check.provider.id === options.targetProviderId ||
+          options.targetProviderId.startsWith(`${check.provider.id}-`)
+        );
+      }
+      return isProviderEnabled(check.provider) && !check.open;
+    })
+    .map((check) => check.provider);
   });
 
   if (targetProviders.length === 0) {

@@ -11,6 +11,9 @@ export const config = {
 const DEFAULT_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
+const UPSTREAM_TIMEOUT_MS = 30000;
+const MAX_RESPONSE_SIZE_BYTES = 30 * 1024 * 1024;
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.setHeader("Allow", ["GET", "HEAD"]);
@@ -72,15 +75,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+
     const upstreamRes = await fetch(targetUrl, {
       method: req.method,
       headers: upstreamHeaders,
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "*");
     res.setHeader("Cache-Control", "no-store");
+
+    const SAFE_RESPONSE_HEADERS = [
+      "content-type",
+      "content-length",
+      "content-range",
+      "accept-ranges",
+      "cache-control",
+      "etag",
+      "last-modified",
+    ];
+
+    for (const header of SAFE_RESPONSE_HEADERS) {
+      const value = upstreamRes.headers.get(header);
+      if (value) {
+        res.setHeader(header, value);
+      }
+    }
 
     const contentType = upstreamRes.headers.get("content-type") || "";
     const isM3u8 =
@@ -160,32 +186,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Binary / Video Segment Streaming
-    if (upstreamRes.headers.has("content-type")) {
-      res.setHeader("Content-Type", upstreamRes.headers.get("content-type")!);
-    }
-    if (upstreamRes.headers.has("content-length")) {
-      res.setHeader("Content-Length", upstreamRes.headers.get("content-length")!);
-    }
-    if (upstreamRes.headers.has("content-range")) {
-      res.setHeader("Content-Range", upstreamRes.headers.get("content-range")!);
-    }
-    if (upstreamRes.headers.has("accept-ranges")) {
-      res.setHeader("Accept-Ranges", upstreamRes.headers.get("accept-ranges")!);
-    }
-
     res.status(upstreamRes.status);
 
     if (upstreamRes.body) {
       const reader = upstreamRes.body.getReader();
+      let bytesStreamed = 0;
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
+        bytesStreamed += value.length;
+        if (bytesStreamed > MAX_RESPONSE_SIZE_BYTES) {
+          reader.cancel();
+          res.end();
+          return;
+        }
+
         res.write(Buffer.from(value));
       }
     }
     res.end();
     return;
-  } catch {
+  } catch (error) {
+    if ((error as Error).name === "AbortError") {
+      res.status(504).json({ error: "Upstream stream timeout" });
+      return;
+    }
     res.status(502).json({ error: "Upstream stream fetch failed" });
     return;
   }

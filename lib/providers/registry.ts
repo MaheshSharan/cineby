@@ -70,7 +70,6 @@ export async function resolveAllStreams(
       return isProviderEnabled(check.provider) && !check.open;
     })
     .map((check) => check.provider);
-  });
 
   if (targetProviders.length === 0) {
     return { sources: [], subtitles: [] };
@@ -149,9 +148,18 @@ export async function resolveAllStreams(
   };
 }
 
-export function listAvailableProviders(): { id: string; name: string }[] {
-  return ALL_PROVIDERS.filter((p) => isProviderEnabled(p) && !isCircuitOpen(p.id)).map((p) => ({
-    id: p.id,
-    name: p.name,
-  }));
+export async function listAvailableProviders(): Promise<Array<{ id: string; name: string }>> {
+  const circuitChecks = await Promise.all(
+    ALL_PROVIDERS.map(async (p) => ({
+      provider: p,
+      open: await isCircuitOpen(p.id),
+    }))
+  );
+
+  return circuitChecks
+    .filter((check) => isProviderEnabled(check.provider) && !check.open)
+    .map((check) => ({
+      id: check.provider.id,
+      name: check.provider.name,
+    }));
 }

@@ -337,14 +337,16 @@ export function PlayerContainer({
 
   const loadStream = useCallback(
     async (serverId: string) => {
+      console.log(`[Player] Loading stream: serverId=${serverId}`);
       const element = videoRef.current;
       if (!element) return;
 
       const isSameMedia = lastMediaKeyRef.current === currentMediaKey;
       lastMediaKeyRef.current = currentMediaKey;
 
-      // Remember current playback position so changing servers resumes from the exact spot
       const previousTime = isSameMedia && element.currentTime > 0 ? element.currentTime : 0;
+
+      console.log(`[Player] Resolving stream for ${media.mediaType}/${media.mediaId}${isTv ? ` S${currentSeason}E${currentEpisode}` : ""}`);
 
       const requestId = ++requestIdRef.current;
       streamRequestControllerRef.current?.abort();
@@ -363,9 +365,12 @@ export function PlayerContainer({
 
       const result = await resolveStream(serverId, request, resolveToken);
       if (requestId !== requestIdRef.current) {
+        console.log("[Player] Request aborted (navigation or new request)");
         return;
       }
       setIsResolvingStream(false);
+
+      console.log(`[Player] Resolved ${result.sources?.length ?? 0} sources, ${result.subtitles?.length ?? 0} subtitles`);
 
       if (result.subtitles && result.subtitles.length > 0) {
         setAvailableSubtitles(result.subtitles);
@@ -386,9 +391,12 @@ export function PlayerContainer({
 
       const source = result.source;
       if (!source) {
+        console.error("[Player] ❌ No source resolved");
         setStream({ source: null, isError: true });
         return;
       }
+
+      console.log(`[Player] ✅ Playing source: ${source.name} (${source.quality ?? "unknown"}) - ${source.format}`);
 
       // Sync active serverId in settings to the actual source provider ID if it switched/fallback
       if (source.id && source.id !== serverId) {
@@ -428,7 +436,7 @@ export function PlayerContainer({
       setStream({ source, isError: false });
       void element.play().catch(() => {});
     },
-    [currentEpisode, currentMediaKey, currentSeason, isTv, media.mediaId, media.mediaType, resolveToken, subtitles]
+    [currentEpisode, currentMediaKey, currentSeason, isTv, media.mediaId, media.mediaType, resolveToken, subtitles.activeTrack, subtitles.selectTrack]
   );
 
   const loadStreamDoubleBuffer = useCallback(

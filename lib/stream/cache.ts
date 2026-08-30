@@ -1,6 +1,7 @@
 import { getJson, setJson } from "@/lib/redis";
 import { resolveAllStreams } from "@/lib/providers/registry";
 import type { StreamRequest, StreamResponse } from "@/lib/providers/types";
+import { logInfo } from "@/lib/logger";
 
 // TODO: Replace with Redis SET NX lock for multi-process VPS deployment
 // Current implementation: in-memory Map is per-process only
@@ -19,16 +20,23 @@ export async function getOrResolveStream(
 
   const cached = await getJson<StreamResponse>(key);
   if (cached) {
+    logInfo("StreamCache", `✅ Cache HIT: ${key}`);
     return cached;
   }
 
+  logInfo("StreamCache", `❌ Cache MISS: ${key}`);
+
   const existing = inflight.get(key);
   if (existing) {
+    logInfo("StreamCache", `⏳ SingleFlight: Waiting for inflight request ${key}`);
     return existing;
   }
 
+  logInfo("StreamCache", `🔍 Starting provider resolution for ${key}`);
+
   const promise = resolveAllStreams(req)
     .then(async (result) => {
+      logInfo("StreamCache", `💾 Caching result for ${key} (TTL=4h)`);
       await setJson(key, result, 14400);
       return result;
     })

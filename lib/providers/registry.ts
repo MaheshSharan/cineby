@@ -3,7 +3,7 @@ import { isCircuitOpen, recordFailure, recordSuccess } from "./circuitBreaker";
 import { buildStreamProxyUrl } from "./proxy";
 import { ALL_PROVIDERS } from "./sources";
 import type { Provider, StreamRequest, StreamResponse, StreamSource, SubtitleTrack } from "./types";
-import { logError } from "@/lib/logger";
+import { logError, logInfo, logWarn, logDebug } from "@/lib/logger";
 
 function isProviderEnabled(provider: Provider): boolean {
   const envVar = `ENABLE_${provider.id.toUpperCase()}`;
@@ -27,18 +27,23 @@ async function fetchWithTimeout(
     request.signal.addEventListener("abort", () => controller.abort());
   }
 
+  logDebug("Registry", `🚀 Fetching provider: ${provider.name}`);
+
   try {
     const res = await provider.fetch({
       ...request,
       signal: controller.signal,
     });
     await recordSuccess(provider.id);
+    logInfo("Registry", `✅ Provider success: ${provider.name} (${res.sources.length} sources)`);
     return res;
   } catch (error) {
     if (controller.signal.aborted || request.signal?.aborted) {
+      logDebug("Registry", `⏹️ Provider aborted: ${provider.name}`);
       return { sources: [], subtitles: [] };
     }
     await recordFailure(provider.id);
+    logWarn("Registry", `❌ Provider failed: ${provider.name}`);
     logError(`Provider:${provider.id}`, error);
     return { sources: [], subtitles: [] };
   } finally {
@@ -51,6 +56,11 @@ export async function resolveAllStreams(
   options?: { timeoutMs?: number; targetProviderId?: string }
 ): Promise<StreamResponse> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_PROVIDER_TIMEOUT_MS;
+
+  logInfo(
+    "Registry",
+    `Resolving streams for ${request.type}/${request.tmdbId}${request.season ? ` S${request.season}E${request.episode}` : ""}`
+  );
 
   const circuitChecks = await Promise.all(
     ALL_PROVIDERS.map(async (p) => ({
@@ -71,7 +81,15 @@ export async function resolveAllStreams(
     })
     .map((check) => check.provider);
 
+  const openCircuits = circuitChecks.filter((c) => c.open).map((c) => c.provider.name);
+  if (openCircuits.length > 0) {
+    logWarn("Registry", `Circuit breakers OPEN: ${openCircuits.join(", ")}`);
+  }
+
+  logInfo("Registry", `Active providers: ${targetProviders.map((p) => p.name).join(", ")}`);
+
   if (targetProviders.length === 0) {
+    logWarn("Registry", "⚠️ No providers available (all disabled or circuit-broken)");
     return { sources: [], subtitles: [] };
   }
 
@@ -141,6 +159,11 @@ export async function resolveAllStreams(
     const rankB = QUALITY_RANKS[b.quality] ?? 0;
     return rankB - rankA;
   });
+
+  logInfo(
+    "Registry",
+    `📦 Collected ${collectedSources.length} sources, ${collectedSubtitles.length} subtitles`
+  );
 
   return {
     sources: collectedSources,

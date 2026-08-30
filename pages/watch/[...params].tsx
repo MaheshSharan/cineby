@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { listHistory } from "@/lib/db/history";
 import { formatRuntime, getEpisodeHref, getYear } from "@/lib/utils/media";
 import { generateResolveToken } from "@/lib/security/resolveToken";
+import { logInfo, logError } from "@/lib/logger";
 
 import { PlayerShell } from "@/components/player/PlayerShell";
 import type { PlayerMedia, PlayerSeason } from "@/components/player/types";
@@ -45,7 +46,10 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
   const mediaType = params[0];
   const id = params[1];
 
+  logInfo("Watch:SSR", `Player page request: ${mediaType}/${id}`);
+
   if (!id || (mediaType !== "movie" && mediaType !== "tv")) {
+    logError("Watch:SSR", `Invalid params: mediaType=${mediaType}, id=${id}`);
     return { notFound: true };
   }
 
@@ -55,6 +59,8 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
     ?? "0.0.0.0";
   const ipPrefix = ip.split(".").slice(0, 3).join(".");
   const sessionId = user?.id?.toString() ?? "anon";
+
+  logInfo("Watch:SSR", `Session: ${sessionId}, IP: ${ipPrefix}.xxx`);
 
   try {
     if (mediaType === "tv") {
@@ -84,6 +90,8 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
 
       const resolveToken = generateResolveToken(sessionId, ipPrefix, details.id);
 
+      logInfo("Watch:SSR", `Generated TV token for ${details.title} S${season}E${episode}, tmdbId=${details.id}`);
+
       return {
         props: {
           title: details.title,
@@ -112,6 +120,8 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
 
     const resolveToken = generateResolveToken(sessionId, ipPrefix, details.id);
 
+    logInfo("Watch:SSR", `Generated movie token for ${details.title}, tmdbId=${details.id}`);
+
     return {
       props: {
         title: details.title,
@@ -129,7 +139,8 @@ export const getServerSideProps: GetServerSideProps<WatchPageProps> = async (con
         resolveToken,
       },
     };
-  } catch {
+  } catch (error) {
+    logError("Watch:SSR", error);
     return { notFound: true };
   }
 };
